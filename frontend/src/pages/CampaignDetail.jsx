@@ -497,10 +497,10 @@ export default function CampaignDetail() {
               </div>
 
               <Link
-                to={`/audit/${campaign.owner}`}
+                to={`/audit/campaign/${id}`}
                 className="text-xs px-3.5 py-2.5 rounded-xl theme-inset text-indigo-600 dark:text-indigo-300 border border-[var(--border-color)] font-extrabold transition-colors hover:border-indigo-500/50 self-start sm:self-auto flex items-center gap-2"
               >
-                <span>🔍 View Audit Dashboard</span>
+                <span>🔍 View Campaign Audit</span>
               </Link>
             </div>
 

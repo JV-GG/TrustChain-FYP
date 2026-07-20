@@ -8,11 +8,17 @@ import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 
 export default function AuditDashboard() {
-  const { address } = useParams();
-  const targetAddress = address ? address.toLowerCase().trim() : '';
+  const { identifier, campaignId: routeCampaignId } = useParams();
+
+  // Determine if auditing a specific campaign ID or a full wallet address
+  const activeId = routeCampaignId || identifier || '';
+  const isCampaignAudit = !isNaN(Number(activeId)) && Number(activeId) > 0;
+  const targetCampaignId = isCampaignAudit ? BigInt(activeId) : null;
+  const targetAddress = !isCampaignAudit && activeId ? activeId.toLowerCase().trim() : '';
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [campaignDetails, setCampaignDetails] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [totalDonations, setTotalDonations] = useState(0);
   const [totalDisbursements, setTotalDisbursements] = useState(0);
@@ -20,7 +26,7 @@ export default function AuditDashboard() {
 
   useEffect(() => {
     async function fetchAuditData() {
-      if (!targetAddress) {
+      if (!activeId) {
         setLoading(false);
         return;
       }
@@ -30,61 +36,76 @@ export default function AuditDashboard() {
 
       try {
         const apiKey = import.meta.env.VITE_ETHERSCAN_API_KEY || 'YourApiKeyToken';
-
-        // 1. Fetch campaigns from smart contract to identify which campaign IDs belong to targetAddress
         const publicClient = createPublicClient({
           chain: sepolia,
           transport: http('https://ethereum-sepolia-rpc.publicnode.com'),
         });
 
+        let campaignOwner = '';
         const ownedCampaignIds = new Set();
-        try {
-          const countData = await publicClient.readContract({
-            address: CONTRACT_ADDRESS,
-            abi: CONTRACT_ABI,
-            functionName: 'getCampaignCount',
-          });
-          const campaignCount = countData ? Number(countData) : 0;
 
-          for (let i = 1; i <= campaignCount; i++) {
+        // 1. If Campaign-Specific Audit, fetch campaign details on-chain
+        if (isCampaignAudit) {
+          try {
             const camp = await publicClient.readContract({
               address: CONTRACT_ADDRESS,
               abi: CONTRACT_ABI,
               functionName: 'getCampaign',
-              args: [BigInt(i)],
+              args: [targetCampaignId],
             });
-            if (camp?.owner && camp.owner.toLowerCase() === targetAddress) {
-              ownedCampaignIds.add(BigInt(i));
+            if (camp) {
+              setCampaignDetails({
+                id: Number(targetCampaignId),
+                title: camp.title,
+                owner: camp.owner,
+                goal: formatEther(camp.goalAmount || 0n),
+                raised: formatEther(camp.raisedAmount || 0n),
+                disbursed: formatEther(camp.disbursedAmount || 0n),
+                isActive: camp.isActive,
+              });
+              campaignOwner = camp.owner.toLowerCase();
+              ownedCampaignIds.add(targetCampaignId);
             }
+          } catch (err) {
+            console.error('Failed to read campaign details:', err);
           }
-        } catch (err) {
-          console.error('Failed to query campaign ownership for audit:', err);
+        } else if (targetAddress) {
+          // Wallet Audit: identify all campaign IDs owned by targetAddress
+          try {
+            const countData = await publicClient.readContract({
+              address: CONTRACT_ADDRESS,
+              abi: CONTRACT_ABI,
+              functionName: 'getCampaignCount',
+            });
+            const campaignCount = countData ? Number(countData) : 0;
+
+            for (let i = 1; i <= campaignCount; i++) {
+              const camp = await publicClient.readContract({
+                address: CONTRACT_ADDRESS,
+                abi: CONTRACT_ABI,
+                functionName: 'getCampaign',
+                args: [BigInt(i)],
+              });
+              if (camp?.owner && camp.owner.toLowerCase() === targetAddress) {
+                ownedCampaignIds.add(BigInt(i));
+              }
+            }
+          } catch (err) {
+            console.error('Failed to query campaign ownership for wallet audit:', err);
+          }
         }
 
-        // 2. Fetch Etherscan txlist for targetAddress & CONTRACT_ADDRESS concurrently
-        const isContractAudit = targetAddress === CONTRACT_ADDRESS.toLowerCase();
+        // 2. Fetch Etherscan txlist for CONTRACT_ADDRESS & user address
+        const queryAddress = isCampaignAudit ? campaignOwner || CONTRACT_ADDRESS : targetAddress;
 
         const [userTxRes, contractTxRes] = await Promise.all([
-          axios.get('https://api.etherscan.io/v2/api', {
-            params: {
-              chainid: 11155111,
-              module: 'account',
-              action: 'txlist',
-              address: targetAddress,
-              startblock: 0,
-              endblock: 99999999,
-              sort: 'desc',
-              apikey: apiKey,
-            },
-            timeout: 10000,
-          }).catch(() => null),
-          !isContractAudit
+          queryAddress
             ? axios.get('https://api.etherscan.io/v2/api', {
                 params: {
                   chainid: 11155111,
                   module: 'account',
                   action: 'txlist',
-                  address: CONTRACT_ADDRESS,
+                  address: queryAddress,
                   startblock: 0,
                   endblock: 99999999,
                   sort: 'desc',
@@ -93,12 +114,25 @@ export default function AuditDashboard() {
                 timeout: 10000,
               }).catch(() => null)
             : Promise.resolve(null),
+          axios.get('https://api.etherscan.io/v2/api', {
+            params: {
+              chainid: 11155111,
+              module: 'account',
+              action: 'txlist',
+              address: CONTRACT_ADDRESS,
+              startblock: 0,
+              endblock: 99999999,
+              sort: 'desc',
+              apikey: apiKey,
+            },
+            timeout: 10000,
+          }).catch(() => null),
         ]);
 
         const rawUserTxs = userTxRes?.data?.result && Array.isArray(userTxRes.data.result) ? userTxRes.data.result : [];
         const rawContractTxs = contractTxRes?.data?.result && Array.isArray(contractTxRes.data.result) ? contractTxRes.data.result : [];
 
-        // Combine and deduplicate txs
+        // Combine and deduplicate
         const allTxMap = new Map();
         [...rawUserTxs, ...rawContractTxs].forEach((tx) => {
           if (tx.hash) {
@@ -129,11 +163,7 @@ export default function AuditDashboard() {
           let type = null;
           let calculatedValEth = valEth;
 
-          // Check if this tx involves targetAddress
-          const isDirectToTarget = toAddr === targetAddress;
-          const isDirectFromTarget = fromAddr === targetAddress;
-
-          // Inspect contract calldata for campaign ID
+          // Decode input calldata
           let calldataCampaignId = null;
           let calldataDisburseAmount = null;
 
@@ -152,34 +182,35 @@ export default function AuditDashboard() {
             }
           }
 
-          // Case A: Disburse Funds (Owner withdrawing from smart contract)
+          // FILTER CONDITION:
+          // If Campaign Audit: strict match on calldataCampaignId === targetCampaignId
+          // If Wallet Audit: match ownedCampaignIds or direct to/from targetAddress
+          const matchesCampaignScope = isCampaignAudit
+            ? calldataCampaignId === targetCampaignId
+            : ownedCampaignIds.has(calldataCampaignId) || fromAddr === targetAddress || toAddr === targetAddress;
+
+          if (!matchesCampaignScope && (isCampaignAudit || targetAddress)) return;
+
+          // Case A: Disburse Funds
           if (fnName.includes('disburse')) {
-            if (isDirectFromTarget || (calldataCampaignId && ownedCampaignIds.has(calldataCampaignId))) {
-              type = 'Disbursement';
-              if (calldataDisburseAmount && calldataDisburseAmount > 0n) {
-                calculatedValEth = Number(formatEther(calldataDisburseAmount));
-              }
-              disbursementsSum += calculatedValEth;
+            type = 'Disbursement';
+            if (calldataDisburseAmount && calldataDisburseAmount > 0n) {
+              calculatedValEth = Number(formatEther(calldataDisburseAmount));
             }
+            disbursementsSum += calculatedValEth;
           }
-          // Case B: Donate (Donor donating ETH to a campaign)
+          // Case B: Donate
           else if (fnName.includes('donate')) {
-            const isOwnedCampaign = calldataCampaignId && ownedCampaignIds.has(calldataCampaignId);
-            if (isContractAudit || isOwnedCampaign || isDirectToTarget) {
-              type = 'Donation';
-              donationsSum += calculatedValEth;
-            } else if (isDirectFromTarget) {
-              type = 'Donation (Sent)';
-              donationsSum += calculatedValEth;
-            }
-          }
-          // Case C: Direct ETH transfer to targetAddress
-          else if (isDirectToTarget && valEth > 0) {
             type = 'Donation';
             donationsSum += calculatedValEth;
           }
-          // Case D: Direct ETH transfer from targetAddress
-          else if (isDirectFromTarget && valEth > 0 && toAddr !== CONTRACT_ADDRESS.toLowerCase()) {
+          // Case C: Direct ETH transfer to target
+          else if (toAddr === targetAddress && valEth > 0) {
+            type = 'Donation';
+            donationsSum += calculatedValEth;
+          }
+          // Case D: Direct ETH transfer from target
+          else if (fromAddr === targetAddress && valEth > 0 && toAddr !== CONTRACT_ADDRESS.toLowerCase()) {
             type = 'Disbursement';
             disbursementsSum += calculatedValEth;
           }
@@ -200,7 +231,7 @@ export default function AuditDashboard() {
               timestamp: Number(tx.timeStamp || 0),
             });
 
-            // Group by date for timeline chart
+            // Group by date for chart
             if (!monthlyTimeline[dateStr]) {
               monthlyTimeline[dateStr] = {
                 date: dateStr,
@@ -209,7 +240,7 @@ export default function AuditDashboard() {
                 Disbursements: 0,
               };
             }
-            if (type.includes('Donation')) {
+            if (type === 'Donation') {
               monthlyTimeline[dateStr].Donations += calculatedValEth;
             } else if (type === 'Disbursement') {
               monthlyTimeline[dateStr].Disbursements += calculatedValEth;
@@ -217,14 +248,14 @@ export default function AuditDashboard() {
           }
         });
 
-        // Sort transactions by timestamp (latest first)
+        // Sort transactions latest first
         processedTxs.sort((a, b) => b.timestamp - a.timestamp);
         setTransactions(processedTxs);
 
         setTotalDonations(donationsSum);
         setTotalDisbursements(disbursementsSum);
 
-        // Timeline array sorted chronologically (oldest first for chart)
+        // Timeline array sorted chronologically
         const timelineArray = Object.values(monthlyTimeline)
           .sort((a, b) => a.timestamp - b.timestamp)
           .map((item) => ({
@@ -243,7 +274,7 @@ export default function AuditDashboard() {
     }
 
     fetchAuditData();
-  }, [targetAddress]);
+  }, [activeId, isCampaignAudit, targetCampaignId, targetAddress]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 space-y-8">
@@ -251,20 +282,44 @@ export default function AuditDashboard() {
       <div className="border-b border-[var(--border-color)] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 uppercase tracking-wider animate-float inline-block">
-            🔍 On-Chain Audit & Verification
+            {isCampaignAudit ? '🔍 Campaign Audit & Verification' : '🔍 Wallet Audit & Verification'}
           </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] mt-2">Audit Dashboard</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] mt-2">
+            {isCampaignAudit && campaignDetails
+              ? `Audit: Campaign #${campaignDetails.id} - ${campaignDetails.title}`
+              : isCampaignAudit
+              ? `Audit: Campaign #${activeId}`
+              : 'Wallet Audit Dashboard'}
+          </h1>
           <p className="text-[var(--text-muted)] mt-1 font-mono text-xs break-all font-semibold">
-            Target Address: <span className="text-indigo-600 dark:text-indigo-400">{targetAddress || 'N/A'}</span>
+            {isCampaignAudit && campaignDetails ? (
+              <span>
+                Creator Address: <span className="text-indigo-600 dark:text-indigo-400">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
+              </span>
+            ) : (
+              <span>
+                Target Address: <span className="text-indigo-600 dark:text-indigo-400">{targetAddress || 'N/A'}</span>
+              </span>
+            )}
           </p>
         </div>
 
-        <Link
-          to={`/check`}
-          className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-indigo-500/50 transition-all self-start sm:self-auto cursor-pointer"
-        >
-          Check Wallet Risk →
-        </Link>
+        <div className="flex items-center gap-2">
+          {isCampaignAudit && campaignDetails?.owner && (
+            <Link
+              to={`/audit/${campaignDetails.owner}`}
+              className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-card font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 transition-all cursor-pointer"
+            >
+              Full Wallet Audit →
+            </Link>
+          )}
+          <Link
+            to="/check"
+            className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-indigo-500/50 transition-all cursor-pointer"
+          >
+            Check Wallet Risk
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -286,15 +341,23 @@ export default function AuditDashboard() {
           {/* Stats Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg hover-lift">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Total Donations Received</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">
+                {isCampaignAudit ? `Campaign #${activeId} Received Funds` : 'Total Donations Received'}
+              </span>
               <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400">{totalDonations.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-muted)] font-medium">Total incoming ETH on Sepolia testnet</p>
+              <p className="text-xs text-[var(--text-muted)] font-medium">
+                {isCampaignAudit ? `Incoming ETH donations for Campaign #${activeId}` : 'Total incoming ETH on Sepolia testnet'}
+              </p>
             </div>
 
             <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg hover-lift">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Total Funds Disbursed</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">
+                {isCampaignAudit ? `Campaign #${activeId} Disbursed Funds` : 'Total Funds Disbursed'}
+              </span>
               <p className="text-3xl sm:text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">{totalDisbursements.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-muted)] font-medium">Total outgoing ETH transfers recorded on-chain</p>
+              <p className="text-xs text-[var(--text-muted)] font-medium">
+                {isCampaignAudit ? `Outgoing ETH withdrawals for Campaign #${activeId}` : 'Total outgoing ETH transfers recorded on-chain'}
+              </p>
             </div>
           </div>
 
@@ -302,11 +365,13 @@ export default function AuditDashboard() {
           <div className="theme-card p-6 rounded-2xl space-y-4 shadow-lg hover-lift">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Donations & Disbursements Timeline</h3>
-              <span className="text-xs text-[var(--text-muted)] font-bold">Synchronized by Date</span>
+              <span className="text-xs text-[var(--text-muted)] font-bold">
+                {isCampaignAudit ? `Campaign #${activeId} Audit Trail` : 'Synchronized by Date'}
+              </span>
             </div>
 
             {chartData.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-12 text-center font-medium">No donation or disbursement timeline data available.</p>
+              <p className="text-sm text-[var(--text-muted)] py-12 text-center font-medium">No donation or disbursement timeline data available for this target.</p>
             ) : (
               <div className="h-80 w-full pt-4">
                 <ResponsiveContainer width="100%" height="100%">

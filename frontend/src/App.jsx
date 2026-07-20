@@ -21,7 +21,8 @@ export default function App() {
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/campaigns/:id" element={<CampaignDetail />} />
             <Route path="/create" element={<CreateCampaign />} />
-            <Route path="/audit/:address" element={<AuditDashboard />} />
+            <Route path="/audit/:identifier" element={<AuditDashboard />} />
+            <Route path="/audit/campaign/:campaignId" element={<AuditDashboard />} />
           </Routes>
         </main>
         <footer className="border-t border-[var(--border-color)] py-6 text-center text-xs text-[var(--text-muted)] transition-colors">

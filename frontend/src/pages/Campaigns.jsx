@@ -73,7 +73,7 @@ export default function Campaigns() {
           isActive: c.isActive,
         }));
 
-        // Render campaigns INSTANTLY (< 200ms) without waiting for Etherscan API background calls
+        // Render campaigns INSTANTLY (< 200ms) without waiting for background calls
         setCampaignsList(formatted);
         setLoading(false);
 
@@ -138,6 +138,21 @@ export default function Campaigns() {
 
     return true;
   });
+
+  // User's own campaigns summary metrics
+  const myCampaigns = userAddress
+    ? campaignsList.filter((c) => c.owner.toLowerCase() === userAddress.toLowerCase())
+    : [];
+
+  const myTotalRaised = myCampaigns.reduce(
+    (acc, c) => acc + Number(formatEther(c.raisedAmount || 0n)),
+    0
+  );
+  const myTotalDisbursed = myCampaigns.reduce(
+    (acc, c) => acc + Number(formatEther(c.disbursedAmount || 0n)),
+    0
+  );
+  const myAvailableVault = Math.max(0, myTotalRaised - myTotalDisbursed);
 
   // Separate active vs completed for 'ALL' view
   const activeCampaigns = filteredCampaigns.filter((c) => {
@@ -217,6 +232,50 @@ export default function Campaigns() {
           <span className="absolute left-3 top-2.5 text-xs text-[var(--text-muted)]">🔍</span>
         </div>
       </div>
+
+      {/* MY CAMPAIGNS SUMMARY OVERVIEW BANNER */}
+      {filter === 'MY_CAMPAIGNS' && userAddress && (
+        <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl animate-fade-in border border-indigo-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-4">
+            <div>
+              <h2 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
+                <span>👤</span> My Campaigns Summary Overview
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
+                Connected Wallet: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{userAddress}</span>
+              </p>
+            </div>
+            <Link
+              to={`/audit/${userAddress}`}
+              className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-inset font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 transition-all self-start sm:self-auto cursor-pointer"
+            >
+              Full Wallet Audit Dashboard →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="theme-inset p-4 rounded-xl space-y-1">
+              <span className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase">Created Campaigns</span>
+              <p className="text-2xl font-extrabold text-[var(--text-primary)]">{myCampaigns.length}</p>
+            </div>
+
+            <div className="theme-inset p-4 rounded-xl space-y-1">
+              <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Total Received</span>
+              <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{myTotalRaised.toFixed(4)} ETH</p>
+            </div>
+
+            <div className="theme-inset p-4 rounded-xl space-y-1">
+              <span className="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 uppercase">Total Disbursed</span>
+              <p className="text-2xl font-extrabold text-purple-600 dark:text-purple-400">{myTotalDisbursed.toFixed(4)} ETH</p>
+            </div>
+
+            <div className="theme-inset p-4 rounded-xl space-y-1">
+              <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase">Vault Balance</span>
+              <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">{myAvailableVault.toFixed(4)} ETH</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Campaign Section */}
       {loading ? (
