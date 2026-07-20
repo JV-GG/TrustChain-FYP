@@ -197,6 +197,15 @@ export default function Navbar() {
 
                             {/* Actions List */}
                             <div className="space-y-1">
+                              <Link
+                                to="/campaigns?filter=MY_CAMPAIGNS"
+                                onClick={() => setDropdownOpen(false)}
+                                className="w-full p-2.5 rounded-xl hover:bg-[var(--border-subtle)]/30 text-xs font-extrabold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2.5 transition-colors cursor-pointer"
+                              >
+                                <span>📁</span>
+                                <span>My Campaigns</span>
+                              </Link>
+
                               <button
                                 type="button"
                                 onClick={() => handleCopy(account.address)}

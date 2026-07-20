@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useReadContract, usePublicClient } from 'wagmi';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useReadContract, usePublicClient, useAccount } from 'wagmi';
 import { formatEther } from 'viem';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice';
 import { verifyCampaign } from '../services/campaignVerifier';
 import VerificationBadge from '../components/VerificationBadge';
 
 export default function Campaigns() {
-  const [filter, setFilter] = useState('ALL'); // ALL, ACTIVE, VERIFIED, GOAL_REACHED
+  const [searchParams] = useSearchParams();
+  const queryFilter = searchParams.get('filter');
+
+  const { address: userAddress } = useAccount();
+  const [filter, setFilter] = useState(queryFilter || 'ALL'); // ALL, MY_CAMPAIGNS, ACTIVE, VERIFIED, GOAL_REACHED
   const [search, setSearch] = useState('');
   const [campaignsList, setCampaignsList] = useState([]);
   const [verificationsMap, setVerificationsMap] = useState({});
@@ -16,6 +21,13 @@ export default function Campaigns() {
 
   const { ethPrice } = useEthPrice();
   const publicClient = usePublicClient();
+
+  // Sync state with URL search param if present
+  useEffect(() => {
+    if (queryFilter) {
+      setFilter(queryFilter);
+    }
+  }, [queryFilter]);
 
   // Read campaignCount from smart contract
   const { data: countData, refetch: refetchCount } = useReadContract({
@@ -109,6 +121,10 @@ export default function Campaigns() {
     const isGoalReached = raisedNum >= goalNum && goalNum > 0;
     const vBadge = verificationsMap[camp.id]?.badge;
 
+    if (filter === 'MY_CAMPAIGNS') {
+      if (!userAddress) return false;
+      return camp.owner.toLowerCase() === userAddress.toLowerCase();
+    }
     if (filter === 'ACTIVE') return camp.isActive && !isGoalReached;
     if (filter === 'VERIFIED') return vBadge === 'VERIFIED';
     if (filter === 'GOAL_REACHED') return isGoalReached;
@@ -116,7 +132,7 @@ export default function Campaigns() {
     return true;
   });
 
-  // Separate active vs completed
+  // Separate active vs completed for 'ALL' view
   const activeCampaigns = filteredCampaigns.filter((c) => {
     const goalNum = Number(c.goalAmount || 1n);
     const raisedNum = Number(c.raisedAmount || 0n);
@@ -139,9 +155,13 @@ export default function Campaigns() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs font-extrabold uppercase tracking-wider animate-float">
             <span>🌐 On-Chain Crowdfunding</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)]">Explore Campaigns</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)]">
+            {filter === 'MY_CAMPAIGNS' ? 'My Created Campaigns' : 'Explore Campaigns'}
+          </h1>
           <p className="text-[var(--text-muted)] text-sm font-medium">
-            Browse transparent, smart-contract verified campaigns on Ethereum Sepolia testnet.
+            {filter === 'MY_CAMPAIGNS'
+              ? 'Manage and view crowdfunding campaigns published by your wallet on Sepolia.'
+              : 'Browse transparent, smart-contract verified campaigns on Ethereum Sepolia testnet.'}
           </p>
         </div>
 
@@ -159,6 +179,7 @@ export default function Campaigns() {
         <div className="flex flex-wrap items-center gap-2 theme-inset p-1.5 rounded-2xl">
           {[
             { id: 'ALL', label: 'All Campaigns' },
+            { id: 'MY_CAMPAIGNS', label: '👤 My Campaigns' },
             { id: 'ACTIVE', label: '🟢 Active' },
             { id: 'VERIFIED', label: '✓ Verified' },
             { id: 'GOAL_REACHED', label: '🎉 Goal Reached' },
@@ -201,6 +222,36 @@ export default function Campaigns() {
               <div className="h-3 bg-[var(--border-color)] rounded w-full"></div>
             </div>
           ))}
+        </div>
+      ) : filter === 'MY_CAMPAIGNS' && !userAddress ? (
+        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-xl">
+          <span className="text-4xl">🔌</span>
+          <h3 className="text-xl font-extrabold text-[var(--text-primary)]">Wallet Not Connected</h3>
+          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto font-medium">
+            Please connect your wallet to view campaigns created by your address.
+          </p>
+          <div className="flex justify-center pt-2">
+            <ConnectButton />
+          </div>
+        </div>
+      ) : filter === 'MY_CAMPAIGNS' && filteredCampaigns.length === 0 ? (
+        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-xl">
+          <span className="text-4xl">📁</span>
+          <h3 className="text-xl font-extrabold text-[var(--text-primary)]">No Campaigns Created Yet</h3>
+          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto font-mono">
+            Connected Wallet: {userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] font-medium">
+            You haven't registered any campaigns on-chain under this address.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/create"
+              className="btn-vibe shimmer-effect inline-block px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
+            >
+              + Create My First Campaign
+            </Link>
+          </div>
         </div>
       ) : filteredCampaigns.length === 0 ? (
         <div className="theme-card p-12 rounded-2xl text-center space-y-3">
