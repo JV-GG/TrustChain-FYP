@@ -11,10 +11,13 @@ export default function AuditDashboard() {
   const { identifier, campaignId: routeCampaignId } = useParams();
 
   // Determine if auditing a specific campaign ID or a full wallet address
-  const activeId = routeCampaignId || identifier || '';
-  const isCampaignAudit = !isNaN(Number(activeId)) && Number(activeId) > 0;
+  const activeId = (routeCampaignId || identifier || '').trim();
+
+  const isWalletAddress = /^0x[a-fA-F0-9]{40}$/.test(activeId);
+  const isCampaignAudit = Boolean(routeCampaignId) || (!isWalletAddress && /^\d+$/.test(activeId));
+
   const targetCampaignId = isCampaignAudit ? BigInt(activeId) : null;
-  const targetAddress = !isCampaignAudit && activeId ? activeId.toLowerCase().trim() : '';
+  const targetAddress = isWalletAddress ? activeId.toLowerCase() : '';
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
