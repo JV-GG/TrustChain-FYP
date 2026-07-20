@@ -360,10 +360,10 @@ export default function CampaignDetail() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-slate-800 rounded w-1/3"></div>
+          <div className="h-8 bg-[var(--border-color)] rounded w-1/3"></div>
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-96 bg-slate-800 rounded-2xl"></div>
-            <div className="h-96 bg-slate-800 rounded-2xl"></div>
+            <div className="lg:col-span-2 h-96 bg-[var(--border-color)] rounded-2xl"></div>
+            <div className="h-96 bg-[var(--border-color)] rounded-2xl"></div>
           </div>
         </div>
       </div>
@@ -382,7 +382,6 @@ export default function CampaignDetail() {
   const donationUsd = formatUsd(donationEth, ethPrice);
   const badgeType = verification?.badge || 'UNVERIFIED';
 
-  // Trigger celebratory cannons when visiting a campaign that has met its goal!
   const triggerGoalCelebration = () => {
     confetti({
       particleCount: 100,
@@ -395,19 +394,19 @@ export default function CampaignDetail() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-6">
       {/* Navigation Back */}
-      <Link to="/campaigns" className="text-slate-400 hover:text-white text-sm font-medium transition-colors">
+      <Link to="/campaigns" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm font-bold transition-colors">
         ← Back to Campaigns
       </Link>
 
       {/* TOP VERIFICATION ALERT BANNERS */}
       {!isVerifying && badgeType === 'FLAGGED' && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-sm font-semibold flex items-center gap-3 shadow-xl animate-fadeIn">
+        <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-600 dark:text-rose-300 text-sm font-semibold flex items-center gap-3 shadow-xl animate-fade-in">
           <span className="text-3xl">⚠️</span>
           <div>
-            <p className="font-extrabold text-rose-200 text-base">
+            <p className="font-extrabold text-rose-700 dark:text-rose-200 text-base">
               WARNING: Flagged Campaign Wallet
             </p>
-            <p className="text-xs text-rose-300/90 mt-0.5">
+            <p className="text-xs text-rose-600/90 dark:text-rose-300/90 mt-0.5 font-medium">
               This campaign's wallet has been flagged as high risk. Do not donate without conducting your own due diligence.
             </p>
           </div>
@@ -415,11 +414,11 @@ export default function CampaignDetail() {
       )}
 
       {!isVerifying && badgeType === 'VERIFIED' && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm font-semibold flex items-center gap-3 shadow-md">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-sm font-semibold flex items-center gap-3 shadow-md">
           <span className="text-2xl">✓</span>
           <div>
-            <p className="font-bold text-emerald-200">Verified Campaign</p>
-            <p className="text-xs text-emerald-300/90 mt-0.5">
+            <p className="font-extrabold text-emerald-800 dark:text-emerald-200">Verified Campaign</p>
+            <p className="text-xs text-emerald-700 dark:text-emerald-300/90 mt-0.5 font-medium">
               This campaign has passed TrustChain's automated wallet risk verification.
             </p>
           </div>
@@ -433,23 +432,23 @@ export default function CampaignDetail() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Main Campaign Info Card */}
-          <div className="bg-slate-900/60 p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-6">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                     Campaign #{id}
                   </span>
-                  <span className="text-xs font-medium text-slate-400">
+                  <span className="text-xs font-bold text-[var(--text-muted)]">
                     {!campaign.isActive ? '🔴 Closed' : isGoalReached ? '🎉 Goal Reached' : '🟢 Active'}
                   </span>
                 </div>
-                <h1 className="text-3xl font-extrabold text-white mt-2">{campaign.title}</h1>
+                <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mt-2">{campaign.title}</h1>
               </div>
 
               <Link
                 to={`/audit/${campaign.owner}`}
-                className="text-xs px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 font-semibold transition-colors self-start sm:self-auto flex items-center gap-2"
+                className="text-xs px-3.5 py-2.5 rounded-xl theme-inset text-indigo-600 dark:text-indigo-300 border border-[var(--border-color)] font-extrabold transition-colors hover:border-indigo-500/50 self-start sm:self-auto flex items-center gap-2"
               >
                 <span>🔍 View Audit Dashboard</span>
               </Link>
@@ -466,13 +465,13 @@ export default function CampaignDetail() {
             )}
 
             {/* Campaign Owner Address */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span>Campaign Owner Address:</span>
+            <div className="theme-inset p-4 rounded-xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="font-sans font-extrabold">Campaign Owner Address:</span>
               <a
                 href={`https://sepolia.etherscan.io/address/${campaign.owner}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-indigo-400 font-semibold hover:underline break-all"
+                className="text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline break-all"
               >
                 {campaign.owner}
               </a>
@@ -480,15 +479,15 @@ export default function CampaignDetail() {
 
             {/* Description */}
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">About this Campaign</h3>
-              <p className="text-slate-300 leading-relaxed whitespace-pre-line text-sm">{campaign.description}</p>
+              <h3 className="text-xs font-extrabold text-[var(--text-muted)] uppercase tracking-wider">About this Campaign</h3>
+              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-sm">{campaign.description}</p>
             </div>
 
             {/* IPFS Hash */}
             {campaign.ipfsHash && (
-              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-xs font-mono text-slate-400 flex items-center justify-between">
-                <span>IPFS Metadata Hash:</span>
-                <span className="text-indigo-400 font-semibold">{campaign.ipfsHash}</span>
+              <div className="theme-inset p-3.5 rounded-xl text-xs font-mono text-[var(--text-muted)] flex items-center justify-between">
+                <span className="font-sans font-extrabold">IPFS Metadata Hash:</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{campaign.ipfsHash}</span>
               </div>
             )}
 
@@ -496,16 +495,16 @@ export default function CampaignDetail() {
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-end">
                 <div>
-                  <span className="text-2xl font-black text-emerald-400">{raised} ETH</span>
+                  <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{raised} ETH</span>
                   {ethPrice > 0 && (
-                    <span className="text-sm text-slate-400 ml-2">({formatUsd(raised, ethPrice)})</span>
+                    <span className="text-sm text-[var(--text-muted)] font-bold ml-2">({formatUsd(raised, ethPrice)})</span>
                   )}
-                  <span className="text-slate-400 text-xs font-medium ml-2">of {goal} ETH goal</span>
+                  <span className="text-[var(--text-muted)] text-xs font-bold ml-2">of {goal} ETH goal</span>
                 </div>
-                <span className="text-indigo-400 font-bold text-sm">{percent}% Funded</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold text-sm">{percent}% Funded</span>
               </div>
 
-              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+              <div className="w-full theme-inset h-3 rounded-full overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-500"
                   style={{ width: `${percent}%` }}
@@ -513,34 +512,34 @@ export default function CampaignDetail() {
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 text-center">
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Goal</span>
-                  <p className="text-base font-bold text-white mt-0.5">{goal} ETH</p>
-                  {ethPrice > 0 && <p className="text-[10px] text-slate-400">{formatUsd(goal, ethPrice)}</p>}
+                <div className="theme-inset p-3.5 rounded-xl">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Goal</span>
+                  <p className="text-base font-extrabold text-[var(--text-primary)] mt-0.5">{goal} ETH</p>
+                  {ethPrice > 0 && <p className="text-[10px] text-[var(--text-muted)]">{formatUsd(goal, ethPrice)}</p>}
                 </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total Raised</span>
-                  <p className="text-base font-bold text-emerald-400 mt-0.5">{raised} ETH</p>
-                  {ethPrice > 0 && <p className="text-[10px] text-slate-400">{formatUsd(raised, ethPrice)}</p>}
+                <div className="theme-inset p-3.5 rounded-xl">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Total Raised</span>
+                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{raised} ETH</p>
+                  {ethPrice > 0 && <p className="text-[10px] text-[var(--text-muted)]">{formatUsd(raised, ethPrice)}</p>}
                 </div>
               </div>
             </div>
           </div>
 
           {/* DONATION SECTION */}
-          <div className="bg-slate-900/60 p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-4">
+              <h2 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
                 <span>💳</span>
                 <span>Make a Transparent Donation</span>
               </h2>
 
               <Link
                 to="/check"
-                className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`text-xs px-3.5 py-2 rounded-xl font-extrabold transition-all flex items-center gap-1.5 ${
                   badgeType === 'CAUTION'
-                    ? 'bg-amber-500/20 text-amber-300 border-2 border-amber-500/60 animate-pulse shadow-lg shadow-amber-500/20'
-                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border-2 border-amber-500/60 animate-pulse shadow-lg shadow-amber-500/20'
+                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
                 }`}
               >
                 <span>🛡️ Check Wallet Risk First</span>
@@ -549,23 +548,22 @@ export default function CampaignDetail() {
 
             {/* Block donation form if FLAGGED, INACTIVE, or GOAL REACHED */}
             {!campaign.isActive ? (
-              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2">
+              <div className="p-6 rounded-2xl theme-inset text-center space-y-2">
                 <span className="text-3xl">🔴</span>
-                <h3 className="text-base font-bold text-slate-300">Campaign Deactivated</h3>
-                <p className="text-xs text-slate-500">This campaign has been closed by the owner and can no longer receive donations.</p>
+                <h3 className="text-base font-extrabold text-[var(--text-primary)]">Campaign Deactivated</h3>
+                <p className="text-xs text-[var(--text-muted)]">This campaign has been closed by the owner and can no longer receive donations.</p>
               </div>
             ) : isGoalReached ? (
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-slate-950 to-indigo-500/10 border-2 border-emerald-500/50 text-center space-y-4 shadow-2xl relative overflow-hidden group">
-                {/* Floating celebratory icon */}
+              <div className="p-8 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-[var(--bg-card-solid)] to-indigo-500/10 border-2 border-emerald-500/50 text-center space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="inline-block p-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-4xl animate-bounce">
                   🎉
                 </div>
                 <div>
-                  <h3 className="text-2xl font-extrabold text-emerald-300 tracking-tight">
+                  <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300 tracking-tight">
                     Target Goal Successfully Reached!
                   </h3>
-                  <p className="text-xs text-emerald-400/90 max-w-md mx-auto leading-relaxed font-medium mt-1">
-                    This campaign has met its full funding goal of <span className="font-extrabold text-white">{goal} ETH</span>. Thank you to all donors — donations are now complete and closed!
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400/90 max-w-md mx-auto leading-relaxed font-semibold mt-1">
+                    This campaign has met its full funding goal of <span className="font-extrabold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors — donations are now complete and closed!
                   </p>
                 </div>
 
@@ -573,7 +571,7 @@ export default function CampaignDetail() {
                   <button
                     type="button"
                     onClick={triggerGoalCelebration}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 mx-auto cursor-pointer"
                   >
                     <span>🎊 Celebrate Achievement!</span>
                   </button>
@@ -582,28 +580,47 @@ export default function CampaignDetail() {
             ) : badgeType === 'FLAGGED' ? (
               <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-3">
                 <span className="text-4xl">🚫</span>
-                <h3 className="text-lg font-bold text-rose-200">Donations Blocked for Flagged Campaign</h3>
-                <p className="text-xs text-rose-300/80 max-w-md mx-auto leading-relaxed">
+                <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-200">Donations Blocked for Flagged Campaign</h3>
+                <p className="text-xs text-rose-700 dark:text-rose-300/80 max-w-md mx-auto leading-relaxed font-semibold">
                   This campaign's owner wallet failed security risk checks or is blacklisted on CryptoScamDB. Direct donations are disabled for donor safety.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleDonate} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Donation Amount (ETH)</label>
+                  <label className="text-xs font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">Donation Amount (ETH)</label>
+
+                  {/* Quick Preset Amount Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 pb-1">
+                    {['0.001', '0.01', '0.05', '0.1'].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setDonationEth(preset)}
+                        className={`px-3 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
+                          donationEth === preset
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'theme-inset text-[var(--text-secondary)] hover:border-indigo-500/50'
+                        }`}
+                      >
+                        + {preset} ETH
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="flex gap-3">
                     <input
                       type="text"
                       inputMode="decimal"
-                      placeholder="Enter any amount in ETH (e.g. 0.001, 0.5, 10)"
+                      placeholder="Enter amount in ETH (e.g. 0.001, 0.05)"
                       value={donationEth}
                       onChange={(e) => setDonationEth(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="flex-1 theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 font-semibold"
                     />
                     <button
                       type="submit"
                       disabled={isDonatePending || isDonateConfirming}
-                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       {isDonatePending || isDonateConfirming ? (
                         <>
@@ -619,15 +636,15 @@ export default function CampaignDetail() {
                     </button>
                   </div>
                   {donationEth && Number(donationEth) > 0 && ethPrice > 0 && (
-                    <p className="text-xs text-emerald-400 font-medium pl-1">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold pl-1">
                       ≈ {donationUsd} USD
-                      <span className="text-slate-500 ml-2">(1 ETH = ${ethPrice.toLocaleString()})</span>
+                      <span className="text-[var(--text-muted)] ml-2 font-normal">(1 ETH = ${ethPrice.toLocaleString()})</span>
                     </p>
                   )}
                 </div>
 
                 {donationError && (
-                  <p className="text-xs text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-medium">
+                  <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
                     ⚠️ {donationError}
                   </p>
                 )}
@@ -637,27 +654,27 @@ export default function CampaignDetail() {
                   <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-3">
                     <span className="text-xl">⏳</span>
                     <div className="text-xs">
-                      <p className="font-bold text-indigo-200">
+                      <p className="font-extrabold text-indigo-700 dark:text-indigo-200">
                         {isDonatePending ? 'Confirm donation in your wallet...' : 'Waiting for block confirmation...'}
                       </p>
-                      {donateTxHash && <p className="text-indigo-400 font-mono mt-0.5">Tx: {donateTxHash.slice(0, 10)}...{donateTxHash.slice(-8)}</p>}
+                      {donateTxHash && <p className="text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">Tx: {donateTxHash.slice(0, 10)}...{donateTxHash.slice(-8)}</p>}
                     </div>
                   </div>
                 )}
 
                 {/* Donation Success */}
                 {isDonateSuccess && donateTxHash && (
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 animate-fadeIn">
-                    <p className="text-sm font-bold text-emerald-300 flex items-center gap-2">
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 animate-fade-in">
+                    <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
                       <span>🎉</span> Thank You! Your Donation Has Been Received On-Chain.
                     </p>
-                    <p className="text-xs text-emerald-400">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
                       Transaction Hash:{' '}
                       <a
                         href={`https://sepolia.etherscan.io/tx/${donateTxHash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline font-mono font-semibold"
+                        className="underline font-mono font-bold"
                       >
                         {donateTxHash.slice(0, 12)}...{donateTxHash.slice(-8)}
                       </a>
@@ -670,20 +687,20 @@ export default function CampaignDetail() {
 
           {/* DANGER ZONE: Deactivate Campaign (Campaign Owner Only) */}
           {isOwner && campaign.isActive && (
-            <div className="bg-slate-900/60 p-6 sm:p-8 rounded-2xl border border-rose-500/30 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="theme-card p-6 sm:p-8 rounded-2xl border-rose-500/30 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-rose-300 flex items-center gap-2">
+                  <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-300 flex items-center gap-2">
                     <span>🛑</span> Danger Zone
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     Deactivating this campaign will permanently close donations on-chain.
                   </p>
                 </div>
               </div>
 
               {deactivateError && (
-                <p className="text-xs text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-medium">
+                <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
                   ⚠️ {deactivateError}
                 </p>
               )}
@@ -692,18 +709,18 @@ export default function CampaignDetail() {
                 <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3">
                   <span className="text-xl">⏳</span>
                   <div className="text-xs">
-                    <p className="font-bold text-rose-200">
+                    <p className="font-bold text-rose-700 dark:text-rose-200">
                       {isDeactivatePending ? 'Confirm deactivation in your wallet...' : 'Deactivating campaign on-chain...'}
                     </p>
                     {deactivateTxHash && (
-                      <p className="text-rose-400 font-mono mt-0.5">Tx: {deactivateTxHash.slice(0, 10)}...{deactivateTxHash.slice(-8)}</p>
+                      <p className="text-rose-600 dark:text-rose-400 font-mono mt-0.5">Tx: {deactivateTxHash.slice(0, 10)}...{deactivateTxHash.slice(-8)}</p>
                     )}
                   </div>
                 </div>
               )}
 
               {isDeactivateSuccess && (
-                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 font-bold">
+                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 font-extrabold">
                   🎉 Campaign Deactivated! Redirecting to campaigns page...
                 </div>
               )}
@@ -712,7 +729,7 @@ export default function CampaignDetail() {
                 type="button"
                 onClick={handleDeactivate}
                 disabled={isDeactivatePending || isDeactivateConfirming}
-                className="w-full py-3 rounded-xl bg-transparent hover:bg-rose-500/10 text-rose-400 border border-rose-500/50 hover:border-rose-500 text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-transparent hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/50 hover:border-rose-500 text-sm font-extrabold transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 Deactivate Campaign
               </button>
@@ -723,17 +740,17 @@ export default function CampaignDetail() {
 
         {/* RIGHT COLUMN — Transaction History (1/3 width) */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-xl sticky top-20">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <div className="theme-card p-5 rounded-2xl shadow-xl sticky top-20">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3 mb-4">
+              <h3 className="text-base font-extrabold text-[var(--text-primary)] flex items-center gap-2">
                 <span>📜</span> Contract Transactions
               </h3>
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block"></span>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping inline-block"></span>
                   Live
                 </span>
-                <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-mono text-[var(--text-muted)] theme-inset px-2 py-0.5 rounded font-bold">
                   {displayTransactions.length} txs
                 </span>
               </div>
@@ -743,55 +760,55 @@ export default function CampaignDetail() {
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="animate-pulse space-y-2">
-                    <div className="h-3 bg-slate-800 rounded w-3/4"></div>
-                    <div className="h-3 bg-slate-800 rounded w-1/2"></div>
-                    <div className="h-px bg-slate-800/50 mt-2"></div>
+                    <div className="h-3 bg-[var(--border-color)] rounded w-3/4"></div>
+                    <div className="h-3 bg-[var(--border-color)] rounded w-1/2"></div>
+                    <div className="h-px bg-[var(--border-color)] mt-2"></div>
                   </div>
                 ))}
               </div>
             ) : displayTransactions.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No transactions found for this contract.</p>
+              <p className="text-xs text-[var(--text-muted)] text-center py-8">No transactions found for this campaign.</p>
             ) : (
-              <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
+              <div className="space-y-1.5 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
                 {displayTransactions.map((tx, i) => (
-                  <div key={i} className="p-3 rounded-xl hover:bg-slate-800/30 transition-colors border border-transparent hover:border-slate-800/50">
+                  <div key={i} className="p-3 rounded-xl hover:bg-[var(--border-subtle)]/30 transition-colors border border-transparent hover:border-[var(--border-color)]">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                             tx.type === 'Donation'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                               : tx.type === 'Disbursement'
-                              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                              ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                               : tx.type === 'Campaign Deactivated'
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
                               : tx.type === 'Campaign Created'
-                              ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                              ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                              : 'theme-inset text-[var(--text-muted)]'
                           }`}
                         >
                           {tx.type}
                         </span>
                         {tx.isPending && (
-                          <span className="text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded animate-pulse">
+                          <span className="text-[9px] font-bold text-amber-600 dark:text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded animate-pulse">
                             ⏳ Confirming...
                           </span>
                         )}
                       </div>
                       {tx.value > 0 && (
                         <div className="text-right">
-                          <span className="text-xs font-bold text-white">{tx.value.toFixed(4)} ETH</span>
+                          <span className="text-xs font-extrabold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</span>
                           {ethPrice > 0 && (
-                            <span className="text-[10px] text-slate-500 ml-1">({formatUsd(tx.value, ethPrice)})</span>
+                            <span className="text-[10px] text-[var(--text-muted)] ml-1">({formatUsd(tx.value, ethPrice)})</span>
                           )}
                         </div>
                       )}
                     </div>
 
-                    <div className="text-[10px] text-slate-500 space-y-0.5">
+                    <div className="text-[10px] text-[var(--text-muted)] space-y-0.5">
                       <p>
                         From:{' '}
-                        <span className="text-slate-400 font-mono">{tx.from.slice(0, 8)}...{tx.from.slice(-6)}</span>
+                        <span className="text-[var(--text-secondary)] font-mono">{tx.from.slice(0, 8)}...{tx.from.slice(-6)}</span>
                       </p>
                       {tx.date && (
                         <p>{tx.date.toLocaleDateString()} {tx.date.toLocaleTimeString()}</p>
@@ -800,7 +817,7 @@ export default function CampaignDetail() {
                         href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-indigo-400 hover:underline font-mono block"
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline font-mono block"
                       >
                         {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
                       </a>
@@ -811,12 +828,12 @@ export default function CampaignDetail() {
             )}
 
             {/* Etherscan Link */}
-            <div className="pt-4 border-t border-slate-800 mt-4">
+            <div className="pt-4 border-t border-[var(--border-color)] mt-4">
               <a
                 href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-indigo-400 hover:underline font-semibold flex items-center gap-1"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-extrabold flex items-center gap-1"
               >
                 View all on Etherscan →
               </a>

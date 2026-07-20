@@ -123,20 +123,20 @@ export default function AuditDashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 space-y-8">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-[var(--border-color)] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 uppercase tracking-wider">
             🔍 On-Chain Audit & Verification
           </span>
-          <h1 className="text-3xl font-extrabold text-white mt-2">Audit Dashboard</h1>
-          <p className="text-slate-400 mt-1 font-mono text-xs break-all">
-            Target Address: <span className="text-indigo-400">{targetAddress || 'N/A'}</span>
+          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mt-2">Audit Dashboard</h1>
+          <p className="text-[var(--text-muted)] mt-1 font-mono text-xs break-all font-semibold">
+            Target Address: <span className="text-indigo-600 dark:text-indigo-400">{targetAddress || 'N/A'}</span>
           </p>
         </div>
 
         <Link
           to={`/check`}
-          className="text-xs px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition-colors self-start sm:self-auto"
+          className="text-xs px-3.5 py-2.5 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-indigo-500/50 transition-colors self-start sm:self-auto cursor-pointer"
         >
           Check Wallet Risk →
         </Link>
@@ -145,48 +145,48 @@ export default function AuditDashboard() {
       {loading ? (
         <div className="animate-pulse space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="h-28 bg-slate-800 rounded-2xl"></div>
-            <div className="h-28 bg-slate-800 rounded-2xl"></div>
+            <div className="h-28 bg-[var(--border-color)] rounded-2xl"></div>
+            <div className="h-28 bg-[var(--border-color)] rounded-2xl"></div>
           </div>
-          <div className="h-64 bg-slate-800 rounded-2xl"></div>
+          <div className="h-64 bg-[var(--border-color)] rounded-2xl"></div>
         </div>
       ) : (
         <>
           {errorMsg && (
-            <p className="text-xs text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-medium">
+            <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
               ⚠️ {errorMsg}
             </p>
           )}
 
           {/* Stats Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-2 shadow-lg">
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Total Donations Received</span>
-              <p className="text-3xl font-black text-emerald-400">{totalDonations.toFixed(4)} ETH</p>
-              <p className="text-xs text-slate-400">Total incoming ETH on Sepolia testnet</p>
+            <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg">
+              <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Total Donations Received</span>
+              <p className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{totalDonations.toFixed(4)} ETH</p>
+              <p className="text-xs text-[var(--text-muted)] font-medium">Total incoming ETH on Sepolia testnet</p>
             </div>
 
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-2 shadow-lg">
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Total Funds Disbursed</span>
-              <p className="text-3xl font-black text-indigo-400">{totalDisbursements.toFixed(4)} ETH</p>
-              <p className="text-xs text-slate-400">Total outgoing ETH transfers recorded on-chain</p>
+            <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg">
+              <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Total Funds Disbursed</span>
+              <p className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{totalDisbursements.toFixed(4)} ETH</p>
+              <p className="text-xs text-[var(--text-muted)] font-medium">Total outgoing ETH transfers recorded on-chain</p>
             </div>
           </div>
 
           {/* Recharts Bar Chart */}
-          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
-            <h3 className="text-lg font-bold text-white">Donations & Disbursements Timeline</h3>
+          <div className="theme-card p-6 rounded-2xl space-y-4 shadow-lg">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Donations & Disbursements Timeline</h3>
             {chartData.length === 0 ? (
-              <p className="text-sm text-slate-500 py-8 text-center">No donation or disbursement timeline data available.</p>
+              <p className="text-sm text-[var(--text-muted)] py-8 text-center font-medium">No donation or disbursement timeline data available.</p>
             ) : (
               <div className="h-72 w-full pt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="date" stroke="#94a3b8" />
-                    <YAxis stroke="#94a3b8" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" />
+                    <YAxis stroke="var(--text-muted)" />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                      contentStyle={{ backgroundColor: 'var(--bg-card-solid)', borderColor: 'var(--border-color)', borderRadius: '0.75rem', color: 'var(--text-primary)' }}
                     />
                     <Bar dataKey="Donations" fill="#10b981" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Disbursements" fill="#6366f1" radius={[4, 4, 0, 0]} />
@@ -197,42 +197,42 @@ export default function AuditDashboard() {
           </div>
 
           {/* Transaction History Table */}
-          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4 shadow-lg">
+          <div className="theme-card p-6 rounded-2xl space-y-4 shadow-lg">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Transaction History</h3>
-              <span className="text-xs text-slate-400 font-mono">{transactions.length} Transactions</span>
+              <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Transaction History</h3>
+              <span className="text-xs text-[var(--text-muted)] font-mono font-bold">{transactions.length} Transactions</span>
             </div>
 
             {transactions.length === 0 ? (
-              <p className="text-sm text-slate-500 py-8 text-center">No ETH donation or disbursement transactions found.</p>
+              <p className="text-sm text-[var(--text-muted)] py-8 text-center font-medium">No ETH donation or disbursement transactions found.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
+                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
                       <th className="py-3 px-3">Date</th>
                       <th className="py-3 px-3">Type</th>
                       <th className="py-3 px-3">Amount (ETH)</th>
                       <th className="py-3 px-3">TxHash</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-[var(--border-color)]">
                     {transactions.map((tx, i) => (
-                      <tr key={i} className="hover:bg-slate-800/30 font-mono transition-colors">
-                        <td className="py-3 px-3 text-slate-300 font-sans">{tx.date}</td>
+                      <tr key={i} className="hover:bg-[var(--border-subtle)]/30 font-mono transition-colors">
+                        <td className="py-3 px-3 text-[var(--text-secondary)] font-sans font-medium">{tx.date}</td>
                         <td className="py-3 px-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               tx.type === 'Donation'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                             }`}
                           >
                             {tx.type}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-bold text-white">{tx.value.toFixed(4)} ETH</td>
-                        <td className="py-3 px-3 text-indigo-400 hover:underline">
+                        <td className="py-3 px-3 font-extrabold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</td>
+                        <td className="py-3 px-3 text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
                           <a
                             href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
                             target="_blank"

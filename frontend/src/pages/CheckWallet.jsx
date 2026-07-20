@@ -59,37 +59,37 @@ export default function CheckWallet() {
     if (score <= 25) {
       return {
         level: 'LOW',
-        badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-        scoreText: 'text-emerald-400',
+        badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+        scoreText: 'text-emerald-600 dark:text-emerald-400',
         ringColor: 'stroke-emerald-500',
-        alertBg: 'bg-emerald-950/40 border-emerald-800/80 text-emerald-200',
+        alertBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200',
         recommendation: 'This wallet appears safe to proceed with your donation.',
       };
     } else if (score <= 50) {
       return {
         level: 'MEDIUM',
-        badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-        scoreText: 'text-amber-400',
+        badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400',
+        scoreText: 'text-amber-600 dark:text-amber-400',
         ringColor: 'stroke-amber-500',
-        alertBg: 'bg-amber-950/40 border-amber-800/80 text-amber-200',
+        alertBg: 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200',
         recommendation: 'Proceed with caution. Verify this wallet through other means.',
       };
     } else if (score <= 75) {
       return {
         level: 'HIGH',
-        badgeBg: 'bg-orange-500/10 border-orange-500/30 text-orange-400',
-        scoreText: 'text-orange-400',
+        badgeBg: 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400',
+        scoreText: 'text-orange-600 dark:text-orange-400',
         ringColor: 'stroke-orange-500',
-        alertBg: 'bg-orange-950/40 border-orange-800/80 text-orange-200',
+        alertBg: 'bg-orange-500/10 border-orange-500/30 text-orange-800 dark:text-orange-200',
         recommendation: 'We strongly advise against transferring funds to this wallet.',
       };
     } else {
       return {
         level: 'CRITICAL',
-        badgeBg: 'bg-rose-500/10 border-rose-500/30 text-rose-500',
-        scoreText: 'text-rose-500',
+        badgeBg: 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400',
+        scoreText: 'text-rose-600 dark:text-rose-400',
         ringColor: 'stroke-rose-500',
-        alertBg: 'bg-rose-950/40 border-rose-800/80 text-rose-200',
+        alertBg: 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-200',
         recommendation: 'DO NOT TRANSFER. This wallet shows multiple high-risk signals.',
       };
     }
@@ -99,19 +99,19 @@ export default function CheckWallet() {
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-10">
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-extrabold uppercase tracking-wider">
           🔍 TrustChain Risk Engine
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
           Wallet Risk Assessment
         </h1>
-        <p className="text-slate-400 text-sm leading-relaxed">
+        <p className="text-[var(--text-muted)] text-sm leading-relaxed font-medium">
           Inspect any Ethereum wallet address for transaction anomalies, fund drain ratios, wallet age, and CryptoScamDB flags before donating.
         </p>
       </div>
 
       {/* Input Form Card */}
-      <div className="bg-slate-900/60 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+      <div className="theme-card p-6 sm:p-8 rounded-2xl shadow-xl space-y-4">
         <form onSubmit={handleCheck} className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -120,13 +120,13 @@ export default function CheckWallet() {
                 placeholder="Paste Ethereum wallet address (0x...)"
                 value={inputAddress}
                 onChange={(e) => setInputAddress(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] font-mono placeholder:text-[var(--text-muted)] focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
               />
               {connectedAddress && (
                 <button
                   type="button"
                   onClick={handleUseConnectedWallet}
-                  className="absolute right-3 top-2.5 text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium transition-colors"
+                  className="absolute right-3 top-2.5 text-xs px-2.5 py-1.5 rounded-lg theme-card text-indigo-600 dark:text-indigo-300 font-bold hover:border-indigo-500/50 transition-colors cursor-pointer"
                 >
                   Use My Wallet
                 </button>
@@ -135,7 +135,7 @@ export default function CheckWallet() {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -155,7 +155,7 @@ export default function CheckWallet() {
           </div>
 
           {errorMsg && (
-            <p className="text-xs text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-medium">
+            <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
               ⚠️ {errorMsg}
             </p>
           )}
@@ -164,50 +164,50 @@ export default function CheckWallet() {
 
       {/* Loading Skeleton */}
       {loading && (
-        <div className="bg-slate-900/40 p-8 rounded-2xl border border-slate-800 animate-pulse space-y-6">
+        <div className="theme-card p-8 rounded-2xl animate-pulse space-y-6">
           <div className="flex justify-between items-center">
-            <div className="h-10 bg-slate-800 rounded w-1/3"></div>
-            <div className="h-10 bg-slate-800 rounded w-1/4"></div>
+            <div className="h-10 bg-[var(--border-color)] rounded w-1/3"></div>
+            <div className="h-10 bg-[var(--border-color)] rounded w-1/4"></div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 bg-slate-800 rounded-xl"></div>
+              <div key={i} className="h-24 bg-[var(--border-color)] rounded-xl"></div>
             ))}
           </div>
-          <div className="h-40 bg-slate-800 rounded-xl"></div>
+          <div className="h-40 bg-[var(--border-color)] rounded-xl"></div>
         </div>
       )}
 
       {/* Report Section */}
       {report && !loading && (
-        <div className="space-y-8 animate-fadeIn">
+        <div className="space-y-8 animate-fade-in">
           {/* Main Risk Overview */}
           {(() => {
             const theme = getThemeByScore(report.score);
             return (
-              <div className="bg-slate-900/80 p-8 rounded-2xl border border-slate-800 space-y-6">
+              <div className="theme-card p-8 rounded-2xl space-y-6 shadow-xl">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="space-y-2 text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full border ${theme.badgeBg}`}>
+                      <span className={`text-xs font-extrabold px-3 py-1 rounded-full border ${theme.badgeBg}`}>
                         RISK LEVEL: {theme.level}
                       </span>
                       {report.isBlacklisted && (
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400">
+                        <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-600 dark:text-rose-400">
                           🚨 BLACKLISTED
                         </span>
                       )}
                     </div>
-                    <h2 className="text-2xl font-extrabold text-white">Risk Assessment Result</h2>
-                    <p className="text-xs text-slate-400 font-mono break-all">{inputAddress.trim()}</p>
+                    <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Risk Assessment Result</h2>
+                    <p className="text-xs text-[var(--text-muted)] font-mono break-all">{inputAddress.trim()}</p>
                   </div>
 
                   {/* Circular Score Display */}
-                  <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                  <div className="flex items-center gap-4 theme-inset p-4 rounded-2xl">
                     <div className="relative w-20 h-20 flex items-center justify-center">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                         <path
-                          className="text-slate-800 stroke-current"
+                          className="text-[var(--border-color)] stroke-current"
                           strokeWidth="3.5"
                           fill="none"
                           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -221,13 +221,13 @@ export default function CheckWallet() {
                           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         />
                       </svg>
-                      <span className={`absolute text-2xl font-black ${theme.scoreText}`}>
+                      <span className={`absolute text-2xl font-extrabold ${theme.scoreText}`}>
                         {report.score}
                       </span>
                     </div>
                     <div className="text-left">
-                      <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Risk Score</span>
-                      <p className={`text-lg font-black ${theme.scoreText}`}>{report.score} / 100</p>
+                      <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Risk Score</span>
+                      <p className={`text-lg font-extrabold ${theme.scoreText}`}>{report.score} / 100</p>
                     </div>
                   </div>
                 </div>
@@ -236,8 +236,8 @@ export default function CheckWallet() {
                 <div className={`p-4 rounded-xl border flex items-start gap-3 ${theme.alertBg}`}>
                   <span className="text-xl">💡</span>
                   <div className="space-y-0.5">
-                    <span className="text-xs font-bold uppercase tracking-wider opacity-80">Recommendation</span>
-                    <p className="text-sm font-semibold">{theme.recommendation}</p>
+                    <span className="text-xs font-extrabold uppercase tracking-wider opacity-80">Recommendation</span>
+                    <p className="text-sm font-bold">{theme.recommendation}</p>
                   </div>
                 </div>
               </div>
@@ -246,7 +246,7 @@ export default function CheckWallet() {
 
           {/* Risk Signal Breakdown Cards */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-white">Risk Signal Breakdown</h3>
+            <h3 className="text-xl font-extrabold text-[var(--text-primary)]">Risk Signal Breakdown</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
               <SignalCard
                 icon="📅"
@@ -287,26 +287,26 @@ export default function CheckWallet() {
           </div>
 
           {/* Detailed Risk Factors */}
-          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-lg font-bold text-white">Risk Factor Evaluation</h3>
+          <div className="theme-card p-6 rounded-2xl space-y-4">
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Risk Factor Evaluation</h3>
             <div className="space-y-3">
               {report.signals.map((sig, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80"
+                  className="flex items-center justify-between p-3.5 rounded-xl theme-inset"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg">{sig.isWarning ? '⚠️' : '✅'}</span>
                     <div>
-                      <h4 className="text-sm font-bold text-white">{sig.name}</h4>
-                      <p className="text-xs text-slate-400">{sig.description}</p>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)]">{sig.name}</h4>
+                      <p className="text-xs text-[var(--text-muted)] font-medium">{sig.description}</p>
                     </div>
                   </div>
                   <span
-                    className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                    className={`text-xs font-extrabold px-2.5 py-1 rounded-lg ${
                       sig.isWarning
-                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                     }`}
                   >
                     {sig.impact}
@@ -317,19 +317,19 @@ export default function CheckWallet() {
           </div>
 
           {/* Recent Transactions Table */}
-          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div className="theme-card p-6 rounded-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Recent On-Chain Transactions (Last 10)</h3>
-              <span className="text-xs text-slate-400">{report.transactions.length} Transactions</span>
+              <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Recent On-Chain Transactions (Last 10)</h3>
+              <span className="text-xs text-[var(--text-muted)] font-bold">{report.transactions.length} Transactions</span>
             </div>
 
             {report.transactions.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-6">No recent transactions found for this wallet.</p>
+              <p className="text-sm text-[var(--text-muted)] text-center py-6">No recent transactions found for this wallet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
+                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
                       <th className="py-3 px-3">Tx Hash</th>
                       <th className="py-3 px-3">From</th>
                       <th className="py-3 px-3">To</th>
@@ -337,7 +337,7 @@ export default function CheckWallet() {
                       <th className="py-3 px-3">Age</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-[var(--border-color)]">
                     {report.transactions.map((tx, i) => {
                       const valueEth = (() => {
                         try {
@@ -352,8 +352,8 @@ export default function CheckWallet() {
                       );
 
                       return (
-                        <tr key={i} className="hover:bg-slate-800/30 font-mono transition-colors">
-                          <td className="py-3 px-3 text-indigo-400 hover:underline">
+                        <tr key={i} className="hover:bg-[var(--border-subtle)]/30 font-mono transition-colors">
+                          <td className="py-3 px-3 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
                             <a
                               href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
                               target="_blank"
@@ -362,14 +362,14 @@ export default function CheckWallet() {
                               {tx.hash.slice(0, 8)}...{tx.hash.slice(-6)}
                             </a>
                           </td>
-                          <td className="py-3 px-3 text-slate-300">
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">
                             {tx.from.slice(0, 6)}...{tx.from.slice(-4)}
                           </td>
-                          <td className="py-3 px-3 text-slate-300">
+                          <td className="py-3 px-3 text-[var(--text-secondary)]">
                             {tx.to ? `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}` : 'Contract Creation'}
                           </td>
-                          <td className="py-3 px-3 font-bold text-white">{parseFloat(valueEth).toFixed(4)} ETH</td>
-                          <td className="py-3 px-3 text-slate-400 font-sans">{ageDays > 0 ? `${ageDays}d ago` : 'Today'}</td>
+                          <td className="py-3 px-3 font-extrabold text-[var(--text-primary)]">{parseFloat(valueEth).toFixed(4)} ETH</td>
+                          <td className="py-3 px-3 text-[var(--text-muted)] font-sans font-medium">{ageDays > 0 ? `${ageDays}d ago` : 'Today'}</td>
                         </tr>
                       );
                     })}
@@ -384,7 +384,7 @@ export default function CheckWallet() {
             <div className="flex justify-center pt-4">
               <button
                 onClick={() => navigate('/campaigns')}
-                className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-600/30 transition-all hover:scale-105 flex items-center gap-2"
+                className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold shadow-lg shadow-emerald-600/25 transition-all hover:scale-[1.02] flex items-center gap-2 cursor-pointer"
               >
                 <span>Proceed to Donate</span>
                 <span>→</span>
@@ -402,8 +402,8 @@ function SignalCard({ icon, label, value, subtext, isWarning }) {
     <div
       className={`p-4 rounded-xl border flex flex-col justify-between space-y-2 ${
         isWarning
-          ? 'bg-rose-950/20 border-rose-500/30'
-          : 'bg-slate-950/80 border-slate-800/80'
+          ? 'bg-rose-500/10 border-rose-500/30'
+          : 'theme-inset'
       }`}
     >
       <div className="flex items-center justify-between">
@@ -411,11 +411,11 @@ function SignalCard({ icon, label, value, subtext, isWarning }) {
         {isWarning && <span className="w-2 h-2 rounded-full bg-rose-500"></span>}
       </div>
       <div>
-        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{label}</span>
-        <p className={`text-base font-extrabold mt-0.5 ${isWarning ? 'text-rose-400' : 'text-white'}`}>
+        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">{label}</span>
+        <p className={`text-base font-extrabold mt-0.5 ${isWarning ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-primary)]'}`}>
           {value}
         </p>
-        <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{subtext}</p>
+        <p className="text-[11px] text-[var(--text-muted)] mt-0.5 line-clamp-1 font-medium">{subtext}</p>
       </div>
     </div>
   );
