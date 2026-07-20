@@ -13,11 +13,18 @@ export default function Campaigns() {
   const [campaignList, setCampaignList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { data: countData, isLoading: isCountLoading } = useReadContract({
+  const { data: countData, isLoading: isCountLoading, refetch: refetchCount } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getCampaignCount',
   });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchCount();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refetchCount]);
 
   const campaignCount = countData ? Number(countData) : 0;
   const publicClient = usePublicClient();

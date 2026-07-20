@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -17,6 +17,7 @@ export default function CampaignDetail() {
   const navigate = useNavigate();
 
   const [donationEth, setDonationEth] = useState('');
+  const [lastSubmittedEth, setLastSubmittedEth] = useState('');
   const [donationError, setDonationError] = useState('');
   const [deactivateError, setDeactivateError] = useState('');
 
@@ -26,6 +27,7 @@ export default function CampaignDetail() {
 
   // Transaction history state
   const [transactions, setTransactions] = useState([]);
+  const [optimisticTxs, setOptimisticTxs] = useState([]);
   const [txLoading, setTxLoading] = useState(true);
 
   // 1. Read Campaign Details
@@ -65,17 +67,233 @@ export default function CampaignDetail() {
     hash: donateTxHash,
   });
 
-  // Trigger celebration confetti when donation succeeds
+  // Optimistically inject user's donation transaction immediately upon wallet submission
+  useEffect(() => {
+    if (donateTxHash && address) {
+      setOptimisticTxs((prev) => {
+        if (prev.some((t) => t.hash.toLowerCase() === donateTxHash.toLowerCase())) return prev;
+        return [
+          {
+            hash: donateTxHash,
+            from: address,
+            to: CONTRACT_ADDRESS,
+            value: Number(lastSubmittedEth || 0),
+            type: 'Donation',
+            date: new Date(),
+            isPending: !isDonateSuccess,
+          },
+          ...prev,
+        ];
+      });
+    }
+  }, [donateTxHash, address, lastSubmittedEth, isDonateSuccess]);
+
+  // 5. Fetch Etherscan transactions for this campaign's contract interactions
+  const fetchTransactions = useCallback(async () => {
+    if (!campaign?.owner || !id) return;
+    try {
+      const apiKey = import.meta.env.VITE_ETHERSCAN_API_KEY || 'YourApiKeyToken';
+      const targetCampaignId = BigInt(id);
+      const topic1Hex = '0x' + targetCampaignId.toString(16).padStart(64, '0');
+
+      const [txRes, logRes] = await Promise.all([
+        axios.get('https://api.etherscan.io/v2/api', {
+          params: {
+            chainid: 11155111,
+            module: 'account',
+            action: 'txlist',
+            address: CONTRACT_ADDRESS,
+            startblock: 0,
+            endblock: 99999999,
+            sort: 'desc',
+            apikey: apiKey,
+          },
+          timeout: 10000,
+        }).catch(() => null),
+        axios.get('https://api.etherscan.io/v2/api', {
+          params: {
+            chainid: 11155111,
+            module: 'logs',
+            action: 'getLogs',
+            address: CONTRACT_ADDRESS,
+            topic1: topic1Hex,
+            startblock: 0,
+            endblock: 99999999,
+            apikey: apiKey,
+          },
+          timeout: 10000,
+        }).catch(() => null),
+      ]);
+
+      const matchingHashes = new Set();
+      if (logRes?.data && Array.isArray(logRes.data.result)) {
+        logRes.data.result.forEach((log) => {
+          if (log.transactionHash) {
+            matchingHashes.add(log.transactionHash.toLowerCase());
+          }
+        });
+      }
+
+      let rawTxs = [];
+      if (txRes?.data && Array.isArray(txRes.data.result)) {
+        rawTxs = txRes.data.result;
+      }
+
+      const processed = rawTxs
+        .filter((tx) => {
+          const txHashLower = (tx.hash || '').toLowerCase();
+          if (matchingHashes.has(txHashLower)) return true;
+
+          // Inspect tx input for contract functions accepting _campaignId as 1st param
+          if (tx.input && tx.input.length >= 74) {
+            try {
+              const param1 = BigInt('0x' + tx.input.slice(10, 74));
+              if (param1 === targetCampaignId) return true;
+            } catch {
+              // Ignore parse error
+            }
+          }
+
+          return false;
+        })
+        .map((tx) => {
+          let valEth = 0;
+          try {
+            valEth = Number(formatEther(BigInt(tx.value || '0')));
+          } catch {
+            valEth = Number(tx.value || 0) / 1e18;
+          }
+
+          const txDate = tx.timeStamp
+            ? new Date(Number(tx.timeStamp) * 1000)
+            : null;
+
+          let type = 'Contract Call';
+          const fnName = (tx.functionName || '').toLowerCase();
+          if (fnName.includes('donate')) {
+            type = 'Donation';
+          } else if (fnName.includes('disburse')) {
+            type = 'Disbursement';
+          } else if (fnName.includes('deactivate')) {
+            type = 'Campaign Deactivated';
+          } else if (fnName.includes('create')) {
+            type = 'Campaign Created';
+          }
+
+          return {
+            hash: tx.hash,
+            from: tx.from,
+            to: tx.to,
+            value: valEth,
+            type,
+            date: txDate,
+            functionName: tx.functionName || '',
+            isError: tx.isError,
+            isPending: false,
+          };
+        })
+        .slice(0, 50);
+
+      setTransactions(processed);
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [campaign?.owner, id]);
+
+  // Real-time polling (every 6 seconds) + initial fetch
+  useEffect(() => {
+    if (!campaign?.owner) return;
+    fetchTransactions();
+
+    const interval = setInterval(() => {
+      refetch();
+      fetchTransactions();
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [campaign?.owner, fetchTransactions, refetch]);
+
+  // Watch smart contract events in real-time and inject on-chain event logs immediately
+  useWatchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    eventName: 'DonationReceived',
+    onLogs(logs) {
+      refetch();
+      logs.forEach((log) => {
+        const txHash = log.transactionHash;
+        const donor = log.args?.donor;
+        const amount = log.args?.amount ? Number(formatEther(log.args.amount)) : 0;
+        const logCampaignId = log.args?.campaignId;
+
+        if (txHash && logCampaignId && BigInt(logCampaignId) === BigInt(id)) {
+          setOptimisticTxs((prev) => {
+            if (prev.some((t) => t.hash.toLowerCase() === txHash.toLowerCase())) return prev;
+            return [
+              {
+                hash: txHash,
+                from: donor || '0x...',
+                to: CONTRACT_ADDRESS,
+                value: amount,
+                type: 'Donation',
+                date: new Date(),
+                isPending: false,
+              },
+              ...prev,
+            ];
+          });
+        }
+      });
+      fetchTransactions();
+    },
+  });
+
+  // Trigger celebration confetti + direct instant updates when donation succeeds
   useEffect(() => {
     if (isDonateSuccess) {
+      if (donateTxHash) {
+        setOptimisticTxs((prev) =>
+          prev.map((t) =>
+            t.hash.toLowerCase() === donateTxHash.toLowerCase() ? { ...t, isPending: false } : t
+          )
+        );
+      }
+
       confetti({
         particleCount: 120,
         spread: 80,
         origin: { y: 0.6 },
         colors: ['#10b981', '#6366f1', '#a855f7', '#3b82f6', '#f59e0b'],
       });
+
+      // Direct immediate refetch & transaction reload
+      refetch();
+      fetchTransactions();
+
+      // Scheduled follow-ups to catch Etherscan API indexing lag
+      const t1 = setTimeout(() => {
+        refetch();
+        fetchTransactions();
+      }, 2500);
+
+      const t2 = setTimeout(() => {
+        refetch();
+        fetchTransactions();
+      }, 6000);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [isDonateSuccess]);
+  }, [isDonateSuccess, donateTxHash, refetch, fetchTransactions]);
+
+  // Merge optimistic transactions with Etherscan fetched transactions (deduplicated by tx hash)
+  const displayTransactions = [...optimisticTxs, ...transactions].filter(
+    (tx, index, self) => index === self.findIndex((t) => t.hash.toLowerCase() === tx.hash.toLowerCase())
+  );
 
   // 4. Deactivation Transaction Hook
   const {
@@ -96,82 +314,6 @@ export default function CampaignDetail() {
     }
   }, [isDeactivateSuccess, navigate]);
 
-  // 5. Fetch Etherscan transactions for this campaign's contract interactions
-  useEffect(() => {
-    async function fetchTransactions() {
-      if (!campaign?.owner) return;
-      setTxLoading(true);
-      try {
-        const apiKey = import.meta.env.VITE_ETHERSCAN_API_KEY || 'YourApiKeyToken';
-
-        const res = await axios.get('https://api.etherscan.io/v2/api', {
-          params: {
-            chainid: 11155111,
-            module: 'account',
-            action: 'txlist',
-            address: CONTRACT_ADDRESS,
-            startblock: 0,
-            endblock: 99999999,
-            sort: 'desc',
-            apikey: apiKey,
-          },
-          timeout: 10000,
-        });
-
-        let rawTxs = [];
-        if (res.data && Array.isArray(res.data.result)) {
-          rawTxs = res.data.result;
-        }
-
-        const processed = rawTxs
-          .map((tx) => {
-            let valEth = 0;
-            try {
-              valEth = Number(formatEther(BigInt(tx.value || '0')));
-            } catch {
-              valEth = Number(tx.value || 0) / 1e18;
-            }
-
-            const txDate = tx.timeStamp
-              ? new Date(Number(tx.timeStamp) * 1000)
-              : null;
-
-            let type = 'Contract Call';
-            const fnName = (tx.functionName || '').toLowerCase();
-            if (fnName.includes('donate')) {
-              type = 'Donation';
-            } else if (fnName.includes('disburse')) {
-              type = 'Disbursement';
-            } else if (fnName.includes('deactivate')) {
-              type = 'Campaign Deactivated';
-            } else if (fnName.includes('create')) {
-              type = 'Campaign Created';
-            }
-
-            return {
-              hash: tx.hash,
-              from: tx.from,
-              to: tx.to,
-              value: valEth,
-              type,
-              date: txDate,
-              functionName: tx.functionName || '',
-              isError: tx.isError,
-            };
-          })
-          .slice(0, 50);
-
-        setTransactions(processed);
-      } catch (err) {
-        console.error('Failed to fetch transactions:', err);
-      } finally {
-        setTxLoading(false);
-      }
-    }
-
-    fetchTransactions();
-  }, [campaign?.owner]);
-
   const handleDonate = async (e) => {
     e.preventDefault();
     setDonationError('');
@@ -181,6 +323,7 @@ export default function CampaignDetail() {
     }
 
     try {
+      setLastSubmittedEth(donationEth);
       await donateAsync({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
@@ -189,7 +332,6 @@ export default function CampaignDetail() {
         value: parseEther(donationEth),
       });
       setDonationEth('');
-      setTimeout(() => refetch(), 2000);
     } catch (err) {
       console.error('Donation error:', err);
       setDonationError(err.shortMessage || err.message || 'Donation transaction failed.');
@@ -586,12 +728,18 @@ export default function CampaignDetail() {
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>📜</span> Contract Transactions
               </h3>
-              <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded">
-                {transactions.length} txs
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block"></span>
+                  Live
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded">
+                  {displayTransactions.length} txs
+                </span>
+              </div>
             </div>
 
-            {txLoading ? (
+            {txLoading && displayTransactions.length === 0 ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="animate-pulse space-y-2">
@@ -601,28 +749,35 @@ export default function CampaignDetail() {
                   </div>
                 ))}
               </div>
-            ) : transactions.length === 0 ? (
+            ) : displayTransactions.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-8">No transactions found for this contract.</p>
             ) : (
               <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
-                {transactions.map((tx, i) => (
+                {displayTransactions.map((tx, i) => (
                   <div key={i} className="p-3 rounded-xl hover:bg-slate-800/30 transition-colors border border-transparent hover:border-slate-800/50">
                     <div className="flex items-center justify-between mb-1">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          tx.type === 'Donation'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : tx.type === 'Disbursement'
-                            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                            : tx.type === 'Campaign Deactivated'
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : tx.type === 'Campaign Created'
-                            ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {tx.type}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            tx.type === 'Donation'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : tx.type === 'Disbursement'
+                              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                              : tx.type === 'Campaign Deactivated'
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : tx.type === 'Campaign Created'
+                              ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                        {tx.isPending && (
+                          <span className="text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded animate-pulse">
+                            ⏳ Confirming...
+                          </span>
+                        )}
+                      </div>
                       {tx.value > 0 && (
                         <div className="text-right">
                           <span className="text-xs font-bold text-white">{tx.value.toFixed(4)} ETH</span>
