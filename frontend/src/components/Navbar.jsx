@@ -41,22 +41,19 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 theme-header transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 p-0.5 shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-            <div className="w-full h-full theme-card-solid rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
-              <img src="/logo.png" alt="TrustChain Logo" className="w-full h-full object-contain rounded-lg" />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-lg text-slate-900 dark:text-white tracking-tight">
-              TrustChain
-            </span>
-            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 tracking-wider uppercase font-extrabold">
-              Blockchain FYP
-            </span>
-          </div>
+        <Link to="/" className="flex items-center group py-1">
+          <img
+            src="/logo.png"
+            alt="TrustChain Light"
+            className="h-16 sm:h-20 md:h-22 w-auto object-contain group-hover:scale-105 transition-transform block dark:hidden"
+          />
+          <img
+            src="/logo-dark.png"
+            alt="TrustChain Dark"
+            className="h-16 sm:h-20 md:h-22 w-auto object-contain group-hover:scale-105 transition-transform hidden dark:block"
+          />
         </Link>
 
         {/* Navigation Links */}
