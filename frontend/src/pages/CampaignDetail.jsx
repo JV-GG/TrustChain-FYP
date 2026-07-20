@@ -21,6 +21,10 @@ export default function CampaignDetail() {
   const [donationError, setDonationError] = useState('');
   const [deactivateError, setDeactivateError] = useState('');
 
+  // Disburse State
+  const [disburseAmountEth, setDisburseAmountEth] = useState('');
+  const [disburseError, setDisburseError] = useState('');
+
   // Verification State
   const [verification, setVerification] = useState(null);
   const [isVerifying, setIsVerifying] = useState(true);
@@ -87,6 +91,24 @@ export default function CampaignDetail() {
       });
     }
   }, [donateTxHash, address, lastSubmittedEth, isDonateSuccess]);
+
+  // 4. Disburse Transaction Hook
+  const {
+    data: disburseTxHash,
+    isPending: isDisbursePending,
+    writeContractAsync: disburseAsync,
+  } = useWriteContract();
+
+  const { isLoading: isDisburseConfirming, isSuccess: isDisburseSuccess } = useWaitForTransactionReceipt({
+    hash: disburseTxHash,
+  });
+
+  useEffect(() => {
+    if (isDisburseSuccess) {
+      refetch();
+      fetchTransactions();
+    }
+  }, [isDisburseSuccess]);
 
   // 5. Fetch Etherscan transactions for this campaign's contract interactions
   const fetchTransactions = useCallback(async () => {
@@ -295,7 +317,7 @@ export default function CampaignDetail() {
     (tx, index, self) => index === self.findIndex((t) => t.hash.toLowerCase() === tx.hash.toLowerCase())
   );
 
-  // 4. Deactivation Transaction Hook
+  // 6. Deactivation Transaction Hook
   const {
     data: deactivateTxHash,
     isPending: isDeactivatePending,
@@ -335,6 +357,28 @@ export default function CampaignDetail() {
     } catch (err) {
       console.error('Donation error:', err);
       setDonationError(err.shortMessage || err.message || 'Donation transaction failed.');
+    }
+  };
+
+  const handleDisburse = async (e) => {
+    e.preventDefault();
+    setDisburseError('');
+    if (!disburseAmountEth || isNaN(Number(disburseAmountEth)) || Number(disburseAmountEth) <= 0) {
+      setDisburseError('Please enter a valid ETH disbursement amount.');
+      return;
+    }
+
+    try {
+      await disburseAsync({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'disburseFunds',
+        args: [campaignId, parseEther(disburseAmountEth)],
+      });
+      setDisburseAmountEth('');
+    } catch (err) {
+      console.error('Disbursement error:', err);
+      setDisburseError(err.shortMessage || err.message || 'Disbursement transaction failed.');
     }
   };
 
@@ -378,6 +422,12 @@ export default function CampaignDetail() {
   const raisedNum = Number(campaign.raisedAmount || 0n);
   const percent = goalNum > 0 ? Math.min(100, Math.round((raisedNum / goalNum) * 100)) : 0;
   const isGoalReached = raisedNum >= goalNum && goalNum > 0;
+
+  const raisedWei = campaign.raisedAmount || 0n;
+  const disbursedWei = campaign.disbursedAmount || 0n;
+  const availableWei = raisedWei > disbursedWei ? raisedWei - disbursedWei : 0n;
+  const availableEth = formatEther(availableWei);
+  const disbursedEth = formatEther(disbursedWei);
 
   const donationUsd = formatUsd(donationEth, ethPrice);
   const badgeType = verification?.badge || 'UNVERIFIED';
@@ -684,6 +734,78 @@ export default function CampaignDetail() {
               </form>
             )}
           </div>
+
+          {/* OWNER MANAGEMENT: Disburse Funds (Campaign Owner Only) */}
+          {isOwner && (
+            <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-4 shadow-xl border-indigo-500/30">
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                <div>
+                  <h3 className="text-lg font-extrabold text-[var(--text-primary)] flex items-center gap-2">
+                    <span>💰</span> Owner Management: Disburse Funds
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Withdraw raised donations from the smart contract escrow directly to your personal wallet.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 theme-inset p-4 rounded-xl text-center">
+                <div>
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Available to Claim</span>
+                  <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{availableEth} ETH</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Already Disbursed</span>
+                  <p className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{disbursedEth} ETH</p>
+                </div>
+              </div>
+
+              {Number(availableEth) > 0 ? (
+                <form onSubmit={handleDisburse} className="space-y-3">
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder={`Max: ${availableEth} ETH`}
+                      value={disburseAmountEth}
+                      onChange={(e) => setDisburseAmountEth(e.target.value)}
+                      className="flex-1 theme-inset rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDisburseAmountEth(availableEth)}
+                      className="px-3 py-2.5 rounded-xl theme-card text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 cursor-pointer"
+                    >
+                      Max
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isDisbursePending || isDisburseConfirming}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      {isDisbursePending || isDisburseConfirming ? 'Disbursing...' : 'Disburse Funds'}
+                    </button>
+                  </div>
+
+                  {disburseError && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
+                      ⚠️ {disburseError}
+                    </p>
+                  )}
+
+                  {isDisburseSuccess && (
+                    <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 font-extrabold">
+                      🎉 Funds successfully transferred from smart contract to your wallet!
+                    </div>
+                  )}
+                </form>
+              ) : (
+                <p className="text-xs text-[var(--text-muted)] text-center py-2 font-medium">
+                  No available balance to disburse at this time.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* DANGER ZONE: Deactivate Campaign (Campaign Owner Only) */}
           {isOwner && campaign.isActive && (
