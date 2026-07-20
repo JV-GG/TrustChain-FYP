@@ -149,7 +149,7 @@ pnpm run deploy:sepolia
 **Jun Voon Chen (JV-GG)**  
 *Final Year Project (FYP) — Blockchain & Web3 Application Development*  
 - GitHub: [@JV-GG](https://github.com/JV-GG)  
-- Live Application: [trust-chain-fyp.vercel.app](https://trust-chain-fyp.vercel.app)
+- Live Application: [trustchainfyp.vercel.app](https://trustchainfyp.vercel.app)
 
 ---
 
