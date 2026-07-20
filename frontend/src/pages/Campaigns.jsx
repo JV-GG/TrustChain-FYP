@@ -116,6 +116,21 @@ export default function Campaigns() {
     return true;
   });
 
+  // Separate active vs completed
+  const activeCampaigns = filteredCampaigns.filter((c) => {
+    const goalNum = Number(c.goalAmount || 1n);
+    const raisedNum = Number(c.raisedAmount || 0n);
+    const isGoalReached = raisedNum >= goalNum && goalNum > 0;
+    return c.isActive && !isGoalReached;
+  });
+
+  const completedCampaigns = filteredCampaigns.filter((c) => {
+    const goalNum = Number(c.goalAmount || 1n);
+    const raisedNum = Number(c.raisedAmount || 0n);
+    const isGoalReached = raisedNum >= goalNum && goalNum > 0;
+    return !c.isActive || isGoalReached;
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
       {/* Header */}
@@ -175,7 +190,7 @@ export default function Campaigns() {
         </div>
       </div>
 
-      {/* Campaign Cards Grid */}
+      {/* Main Campaign Section */}
       {loading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -193,105 +208,176 @@ export default function Campaigns() {
           <h3 className="text-lg font-extrabold text-[var(--text-primary)]">No Campaigns Found</h3>
           <p className="text-xs text-[var(--text-muted)]">No campaigns match your filter or search query.</p>
         </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCampaigns.map((camp) => {
-            const raised = formatEther(camp.raisedAmount || 0n);
-            const goal = formatEther(camp.goalAmount || 0n);
-            const goalNum = Number(camp.goalAmount || 1n);
-            const raisedNum = Number(camp.raisedAmount || 0n);
-            const percent = goalNum > 0 ? Math.min(100, Math.round((raisedNum / goalNum) * 100)) : 0;
-            const isGoalReached = raisedNum >= goalNum && goalNum > 0;
-            const vData = verificationsMap[camp.id];
-
-            return (
-              <div
-                key={camp.id}
-                className="theme-card p-6 rounded-2xl flex flex-col justify-between space-y-5 hover-lift group relative overflow-hidden"
-              >
-                {/* Top Badge Row */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                      Campaign #{camp.id}
-                    </span>
-                    <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
-                      {!camp.isActive ? (
-                        '🔴 Closed'
-                      ) : isGoalReached ? (
-                        '🎉 Goal Reached'
-                      ) : (
-                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                          Active
-                        </span>
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Verification Badge */}
-                  {vData && (
-                    <VerificationBadge
-                      badge={vData.badge}
-                      score={vData.score}
-                      reason={vData.reason}
-                      size="sm"
-                    />
-                  )}
-
-                  {/* Title & Description */}
-                  <div>
-                    <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
-                      {camp.title}
-                    </h3>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1.5 line-clamp-2 leading-relaxed font-medium">
-                      {camp.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress Bar & Amount */}
-                <div className="space-y-4 pt-2 border-t border-[var(--border-color)]">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-end text-xs font-extrabold">
-                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
-                        {raised} ETH
-                        {ethPrice > 0 && (
-                          <span className="text-[10px] text-[var(--text-muted)] font-normal ml-1">
-                            ({formatUsd(raised, ethPrice)})
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-[var(--text-muted)]">{percent}%</span>
-                    </div>
-
-                    <div className="w-full theme-inset h-2.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${percent}%` }}
-                      ></div>
-                    </div>
-
-                    <div className="flex justify-between items-center text-[11px] text-[var(--text-muted)] font-semibold">
-                      <span>Goal: {goal} ETH</span>
-                      {ethPrice > 0 && <span>{formatUsd(goal, ethPrice)}</span>}
-                    </div>
-                  </div>
-
-                  {/* View Details Link Button */}
-                  <Link
-                    to={`/campaigns/${camp.id}`}
-                    className="btn-vibe w-full py-2.5 rounded-xl theme-inset text-center text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>View Campaign Details</span>
-                    <span className="transition-transform group-hover:translate-x-1">→</span>
-                  </Link>
-                </div>
+      ) : filter === 'ALL' ? (
+        <div className="space-y-12 animate-fade-in">
+          {/* SECTION 1: Active Crowdfunding */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔥</span>
+                <h2 className="text-xl font-extrabold text-[var(--text-primary)]">Active Crowdfunding</h2>
               </div>
-            );
-          })}
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {activeCampaigns.length} {activeCampaigns.length === 1 ? 'Campaign' : 'Campaigns'} Active
+              </span>
+            </div>
+
+            {activeCampaigns.length === 0 ? (
+              <div className="theme-inset p-8 rounded-2xl text-center space-y-1">
+                <p className="text-sm font-bold text-[var(--text-muted)]">No active campaigns currently raising funds.</p>
+                <p className="text-xs text-[var(--text-muted)] font-medium">Be the first to start a new campaign!</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeCampaigns.map((camp) => (
+                  <CampaignCard
+                    key={camp.id}
+                    camp={camp}
+                    ethPrice={ethPrice}
+                    vData={verificationsMap[camp.id]}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: Completed / Goal Reached */}
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎉</span>
+                <h2 className="text-xl font-extrabold text-[var(--text-primary)]">Completed & Closed Campaigns</h2>
+              </div>
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                {completedCampaigns.length} Completed
+              </span>
+            </div>
+
+            {completedCampaigns.length === 0 ? (
+              <div className="theme-inset p-8 rounded-2xl text-center">
+                <p className="text-sm font-bold text-[var(--text-muted)]">No completed campaigns yet.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {completedCampaigns.map((camp) => (
+                  <CampaignCard
+                    key={camp.id}
+                    camp={camp}
+                    ethPrice={ethPrice}
+                    vData={verificationsMap[camp.id]}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Focused Filter View */
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+          {filteredCampaigns.map((camp) => (
+            <CampaignCard
+              key={camp.id}
+              camp={camp}
+              ethPrice={ethPrice}
+              vData={verificationsMap[camp.id]}
+            />
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CampaignCard({ camp, ethPrice, vData }) {
+  const raised = formatEther(camp.raisedAmount || 0n);
+  const goal = formatEther(camp.goalAmount || 0n);
+  const goalNum = Number(camp.goalAmount || 1n);
+  const raisedNum = Number(camp.raisedAmount || 0n);
+  const percent = goalNum > 0 ? Math.min(100, Math.round((raisedNum / goalNum) * 100)) : 0;
+  const isGoalReached = raisedNum >= goalNum && goalNum > 0;
+
+  return (
+    <div className="theme-card p-6 rounded-2xl flex flex-col justify-between space-y-5 hover-lift group relative overflow-hidden">
+      {/* Top Badge Row */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            Campaign #{camp.id}
+          </span>
+          <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
+            {!camp.isActive ? (
+              <span className="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 font-extrabold">🔴 Closed</span>
+            ) : isGoalReached ? (
+              <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold border border-purple-500/20">
+                🎉 Goal Reached
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Active
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Verification Badge */}
+        {vData && (
+          <VerificationBadge
+            badge={vData.badge}
+            score={vData.score}
+            reason={vData.reason}
+            size="sm"
+          />
+        )}
+
+        {/* Title & Description */}
+        <div>
+          <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+            {camp.title}
+          </h3>
+          <p className="text-xs text-[var(--text-secondary)] mt-1.5 line-clamp-2 leading-relaxed font-medium">
+            {camp.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Progress Bar & Amount */}
+      <div className="space-y-4 pt-2 border-t border-[var(--border-color)]">
+        <div className="space-y-2">
+          <div className="flex justify-between items-end text-xs font-extrabold">
+            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
+              {raised} ETH
+              {ethPrice > 0 && (
+                <span className="text-[10px] text-[var(--text-muted)] font-normal ml-1">
+                  ({formatUsd(raised, ethPrice)})
+                </span>
+              )}
+            </span>
+            <span className="text-[var(--text-muted)]">{percent}%</span>
+          </div>
+
+          <div className="w-full theme-inset h-2.5 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${percent}%` }}
+            ></div>
+          </div>
+
+          <div className="flex justify-between items-center text-[11px] text-[var(--text-muted)] font-semibold">
+            <span>Goal: {goal} ETH</span>
+            {ethPrice > 0 && <span>{formatUsd(goal, ethPrice)}</span>}
+          </div>
+        </div>
+
+        {/* View Details Link Button */}
+        <Link
+          to={`/campaigns/${camp.id}`}
+          className="btn-vibe w-full py-2.5 rounded-xl theme-inset text-center text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>View Campaign Details</span>
+          <span className="transition-transform group-hover:translate-x-1">→</span>
+        </Link>
+      </div>
     </div>
   );
 }
