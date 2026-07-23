@@ -498,7 +498,7 @@ export default function CampaignDetail() {
 
               <Link
                 to={`/audit/campaign/${id}`}
-                className="text-xs px-3.5 py-2.5 rounded-xl theme-inset text-indigo-600 dark:text-indigo-300 border border-[var(--border-color)] font-extrabold transition-colors hover:border-indigo-500/50 self-start sm:self-auto flex items-center gap-2"
+                className="text-xs px-3.5 py-2.5 rounded-xl theme-inset text-[var(--text-primary)] hover:text-emerald-600 dark:hover:text-emerald-400 border border-[var(--border-color)] font-extrabold transition-colors flex items-center gap-2"
               >
                 <span>🔍 View Campaign Audit</span>
               </Link>
@@ -516,12 +516,12 @@ export default function CampaignDetail() {
 
             {/* Campaign Owner Address */}
             <div className="theme-inset p-4 rounded-xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="font-sans font-extrabold">Campaign Owner Address:</span>
+              <span className="font-sans font-extrabold text-[var(--text-primary)]">Campaign Owner Address:</span>
               <a
                 href={`https://sepolia.etherscan.io/address/${campaign.owner}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline break-all"
+                className="text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline break-all"
               >
                 {campaign.owner}
               </a>
@@ -530,14 +530,14 @@ export default function CampaignDetail() {
             {/* Description */}
             <div className="space-y-2">
               <h3 className="text-xs font-extrabold text-[var(--text-muted)] uppercase tracking-wider">About this Campaign</h3>
-              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-sm">{campaign.description}</p>
+              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-sm font-medium">{campaign.description}</p>
             </div>
 
             {/* IPFS Hash */}
             {campaign.ipfsHash && (
               <div className="theme-inset p-3.5 rounded-xl text-xs font-mono text-[var(--text-muted)] flex items-center justify-between">
-                <span className="font-sans font-extrabold">IPFS Metadata Hash:</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{campaign.ipfsHash}</span>
+                <span className="font-sans font-extrabold text-[var(--text-primary)]">IPFS Metadata Hash:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">{campaign.ipfsHash}</span>
               </div>
             )}
 
@@ -551,12 +551,12 @@ export default function CampaignDetail() {
                   )}
                   <span className="text-[var(--text-muted)] text-xs font-bold ml-2">of {goal} ETH goal</span>
                 </div>
-                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold text-sm">{percent}% Funded</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">{percent}% Funded</span>
               </div>
 
-              <div className="w-full theme-inset h-3 rounded-full overflow-hidden">
+              <div className="w-full theme-inset h-3.5 rounded-full overflow-hidden p-0.5 border border-[var(--border-color)]">
                 <div
-                  className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-500"
+                  className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${percent}%` }}
                 ></div>
               </div>
@@ -577,7 +577,7 @@ export default function CampaignDetail() {
           </div>
 
           {/* DONATION SECTION */}
-          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl">
+          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-4">
               <h2 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
                 <span>💳</span>
@@ -586,10 +586,10 @@ export default function CampaignDetail() {
 
               <Link
                 to="/check"
-                className={`text-xs px-3.5 py-2 rounded-xl font-extrabold transition-all flex items-center gap-1.5 ${
+                className={`text-xs px-3.5 py-2 min-h-[44px] rounded-xl font-extrabold transition-all flex items-center gap-1.5 ${
                   badgeType === 'CAUTION'
-                    ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border-2 border-amber-500/60 animate-pulse shadow-lg shadow-amber-500/20'
-                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-2 border-amber-500/60'
+                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30'
                 }`}
               >
                 <span>🛡️ Check Wallet Risk First</span>
@@ -601,43 +601,33 @@ export default function CampaignDetail() {
               <div className="p-6 rounded-2xl theme-inset text-center space-y-2">
                 <span className="text-3xl">🔴</span>
                 <h3 className="text-base font-extrabold text-[var(--text-primary)]">Campaign Deactivated</h3>
-                <p className="text-xs text-[var(--text-muted)]">This campaign has been closed by the owner and can no longer receive donations.</p>
+                <p className="text-xs text-[var(--text-muted)] font-medium">This campaign has been closed by the owner and can no longer receive donations.</p>
               </div>
             ) : isGoalReached ? (
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-[var(--bg-card-solid)] to-indigo-500/10 border-2 border-emerald-500/50 text-center space-y-4 shadow-2xl relative overflow-hidden group">
-                <div className="inline-block p-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-4xl animate-bounce">
+              <div className="p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-4 shadow-sm relative overflow-hidden group">
+                <div className="inline-block p-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-4xl motion-reduce:animate-none animate-pulse-glow transition-transform duration-300 hover:scale-105">
                   🎉
                 </div>
                 <div>
-                  <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300 tracking-tight">
+                  <h3 className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 tracking-tight">
                     Target Goal Successfully Reached!
                   </h3>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400/90 max-w-md mx-auto leading-relaxed font-semibold mt-1">
-                    This campaign has met its full funding goal of <span className="font-extrabold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors — donations are now complete and closed!
+                  <p className="text-xs text-emerald-800 dark:text-emerald-400 max-w-md mx-auto leading-relaxed font-semibold mt-1">
+                    This campaign has met its full funding goal of <span className="font-extrabold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors — donations are now complete!
                   </p>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={triggerGoalCelebration}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 mx-auto cursor-pointer"
-                  >
-                    <span>🎊 Celebrate Achievement!</span>
-                  </button>
                 </div>
               </div>
             ) : badgeType === 'FLAGGED' ? (
               <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-3">
                 <span className="text-4xl">🚫</span>
-                <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-200">Donations Blocked for Flagged Campaign</h3>
-                <p className="text-xs text-rose-700 dark:text-rose-300/80 max-w-md mx-auto leading-relaxed font-semibold">
+                <h3 className="text-lg font-extrabold text-rose-700 dark:text-rose-200">Donations Blocked for Flagged Campaign</h3>
+                <p className="text-xs text-rose-800 dark:text-rose-300 max-w-md mx-auto leading-relaxed font-semibold">
                   This campaign's owner wallet failed security risk checks or is blacklisted on CryptoScamDB. Direct donations are disabled for donor safety.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleDonate} className="space-y-4">
-                <div className="space-y-2">
+              <form onSubmit={handleDonate} className="space-y-5">
+                <div className="space-y-2.5">
                   <label className="text-xs font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">Donation Amount (ETH)</label>
 
                   {/* Quick Preset Amount Buttons */}
@@ -647,10 +637,10 @@ export default function CampaignDetail() {
                         key={preset}
                         type="button"
                         onClick={() => setDonationEth(preset)}
-                        className={`px-3 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
+                        className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
                           donationEth === preset
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'theme-inset text-[var(--text-secondary)] hover:border-indigo-500/50'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'theme-inset text-[var(--text-secondary)] hover:border-emerald-500/50'
                         }`}
                       >
                         + {preset} ETH
@@ -665,12 +655,12 @@ export default function CampaignDetail() {
                       placeholder="Enter amount in ETH (e.g. 0.001, 0.05)"
                       value={donationEth}
                       onChange={(e) => setDonationEth(e.target.value)}
-                      className="flex-1 theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 font-semibold"
+                      className="flex-1 theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-emerald-500 font-semibold"
                     />
                     <button
                       type="submit"
                       disabled={isDonatePending || isDonateConfirming}
-                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2 cursor-pointer"
+                      className="px-6 py-3 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       {isDonatePending || isDonateConfirming ? (
                         <>

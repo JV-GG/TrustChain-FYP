@@ -357,7 +357,7 @@ export default function AuditDashboard() {
               <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">
                 {isCampaignAudit ? `Campaign #${activeId} Disbursed Funds` : 'Total Funds Disbursed'}
               </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">{totalDisbursements.toFixed(4)} ETH</p>
+              <p className="text-3xl sm:text-4xl font-extrabold text-blue-600 dark:text-blue-400">{totalDisbursements.toFixed(4)} ETH</p>
               <p className="text-xs text-[var(--text-muted)] font-medium">
                 {isCampaignAudit ? `Outgoing ETH withdrawals for Campaign #${activeId}` : 'Total outgoing ETH transfers recorded on-chain'}
               </p>

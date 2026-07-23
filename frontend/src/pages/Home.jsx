@@ -116,49 +116,49 @@ export default function Home() {
         </div>
 
         <div className="space-y-1.5 p-4 rounded-xl hover:bg-[var(--border-subtle)]/20 transition-colors">
-          <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Security Escrow</span>
-          <p className="text-4xl font-extrabold text-purple-600 dark:text-purple-400 tracking-tight">100%</p>
-          <span className="text-xs text-slate-600 dark:text-slate-400 font-bold">Non-Reentrant Vault</span>
+          <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Security Escrow</span>
+          <p className="text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">100%</p>
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Non-Reentrant Vault</span>
         </div>
       </div>
 
       {/* How It Works Section with Staggered Motion */}
       <div className="space-y-10">
         <div className="text-center space-y-2">
-          <span className="text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 uppercase tracking-wider">
+          <span className="text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
             How It Works
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">Three Steps to Safe Crowdfunding</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] [text-wrap:balance]">Three Steps to Safe Crowdfunding</h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-indigo-500/50 group cursor-pointer">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all">
+          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-emerald-500/50 group cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
               1
             </div>
-            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               Check Wallet Risk
             </h3>
-            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-medium">
+            <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
               Paste any wallet address into our Risk Engine to compute risk score, drain ratios, and CryptoScamDB blacklists.
             </p>
-            <Link to="/check" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
+            <Link to="/check" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
               <span>Try Check Wallet</span>
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </Link>
           </div>
 
-          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-purple-500/50 group cursor-pointer">
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-emerald-500/50 group cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
               2
             </div>
-            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+            <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               Browse Campaigns
             </h3>
-            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-medium">
+            <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
               Explore verified campaigns on-chain with live funding progress bars and transparent owner profiles.
             </p>
-            <Link to="/campaigns" className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
+            <Link to="/campaigns" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
               <span>Browse Campaigns</span>
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </Link>

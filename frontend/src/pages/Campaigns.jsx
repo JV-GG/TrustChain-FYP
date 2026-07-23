@@ -265,13 +265,13 @@ export default function Campaigns() {
             </div>
 
             <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 uppercase">Total Disbursed</span>
-              <p className="text-2xl font-extrabold text-purple-600 dark:text-purple-400">{myTotalDisbursed.toFixed(4)} ETH</p>
+              <span className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase">Total Disbursed</span>
+              <p className="text-2xl font-extrabold text-[var(--text-primary)]">{myTotalDisbursed.toFixed(4)} ETH</p>
             </div>
 
             <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase">Vault Balance</span>
-              <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">{myAvailableVault.toFixed(4)} ETH</p>
+              <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Vault Balance</span>
+              <p className="text-2xl font-extrabold text-blue-600 dark:text-blue-400">{myAvailableVault.toFixed(4)} ETH</p>
             </div>
           </div>
         </div>
@@ -418,14 +418,14 @@ function CampaignCard({ camp, ethPrice, vData }) {
       {/* Top Badge Row */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             Campaign #{camp.id}
           </span>
           <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
             {!camp.isActive ? (
               <span className="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 font-extrabold">🔴 Closed</span>
             ) : isGoalReached ? (
-              <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold border border-purple-500/20">
+              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">
                 🎉 Goal Reached
               </span>
             ) : (
@@ -449,7 +449,7 @@ function CampaignCard({ camp, ethPrice, vData }) {
 
         {/* Title & Description */}
         <div>
-          <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+          <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
             {camp.title}
           </h3>
           <p className="text-xs text-[var(--text-secondary)] mt-1.5 line-clamp-2 leading-relaxed font-medium">
