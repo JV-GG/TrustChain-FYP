@@ -9,27 +9,33 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const { disconnect } = useDisconnect();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [campaignsDropdown, setCampaignsDropdown] = useState(false);
+  const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const dropdownRef = useRef(null);
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Check Wallet', path: '/check' },
-    { name: 'Campaigns', path: '/campaigns' },
-    { name: 'Create Campaign', path: '/create' },
-  ];
+  const walletDropdownRef = useRef(null);
+  const campaignsDropdownRef = useRef(null);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
+      if (walletDropdownRef.current && !walletDropdownRef.current.contains(event.target)) {
+        setWalletDropdownOpen(false);
+      }
+      if (campaignsDropdownRef.current && !campaignsDropdownRef.current.contains(event.target)) {
+        setCampaignsDropdown(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setCampaignsDropdown(false);
+  }, [location.pathname]);
 
   const handleCopy = (addr) => {
     if (addr) {
@@ -39,68 +45,131 @@ export default function Navbar() {
     }
   };
 
+  const isCampaignActive = location.pathname.startsWith('/campaigns') || location.pathname === '/create';
+
   return (
-    <header className="sticky top-0 z-50 theme-header transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
-        {/* Brand Logo */}
-        <Link to="/" className="flex items-center group py-1">
+    <header className="sticky top-0 z-50 bg-[var(--bg-header)] border-b border-[var(--border-color)] backdrop-blur-xl transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        {/* ── Brand Logo ── */}
+        <Link to="/" className="flex items-center group flex-shrink-0">
           <img
             src="/logo.png"
             alt="TrustChain Light"
-            className="h-16 sm:h-20 md:h-22 w-auto object-contain group-hover:scale-105 transition-transform block dark:hidden"
+            className="h-12 sm:h-14 w-auto object-contain group-hover:scale-105 transition-transform block dark:hidden"
           />
           <img
             src="/logo-dark.png"
             alt="TrustChain Dark"
-            className="h-16 sm:h-20 md:h-22 w-auto object-contain group-hover:scale-105 transition-transform hidden dark:block"
+            className="h-12 sm:h-14 w-auto object-contain group-hover:scale-105 transition-transform hidden dark:block"
           />
         </Link>
 
-        {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 theme-inset p-1.5 rounded-full">
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-1.5 rounded-full text-sm font-extrabold transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30'
-                    : 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                {link.name}
-              </Link>
-            );
-          })}
+        {/* ── Desktop Navigation Bar ── */}
+        <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/5 dark:bg-slate-100/5 p-1.5 rounded-2xl border border-[var(--border-color)] shadow-inner">
+          {/* Home */}
+          <Link
+            to="/"
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+              location.pathname === '/'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+            }`}
+          >
+            <span>🏠</span>
+            <span>Home</span>
+          </Link>
+
+          {/* Crypto News */}
+          <Link
+            to="/news"
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 relative ${
+              location.pathname === '/news'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+            }`}
+          >
+            <span>📰</span>
+            <span>Crypto News</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          </Link>
+
+          {/* Check Wallet */}
+          <Link
+            to="/check"
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+              location.pathname === '/check'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+            }`}
+          >
+            <span>🛡️</span>
+            <span>Check Wallet</span>
+          </Link>
+
+          {/* Campaigns Dropdown */}
+          <div className="relative" ref={campaignsDropdownRef}>
+            <button
+              onClick={() => setCampaignsDropdown(!campaignsDropdown)}
+              type="button"
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                isCampaignActive
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+              }`}
+            >
+              <span>🚀</span>
+              <span>Campaigns</span>
+              <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${campaignsDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Sub-menu Dropdown */}
+            {campaignsDropdown && (
+              <div className="absolute left-0 top-full mt-2 w-56 theme-card-solid rounded-2xl shadow-2xl p-2 space-y-1 z-50 animate-fade-in border border-[var(--border-color)]">
+                <Link
+                  to="/campaigns"
+                  onClick={() => setCampaignsDropdown(false)}
+                  className={`w-full p-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2.5 transition-all ${
+                    location.pathname === '/campaigns'
+                      ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-inset)]'
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>Browse Campaigns</span>
+                </Link>
+
+                <Link
+                  to="/create"
+                  onClick={() => setCampaignsDropdown(false)}
+                  className={`w-full p-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2.5 transition-all ${
+                    location.pathname === '/create'
+                      ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-inset)]'
+                  }`}
+                >
+                  <span>➕</span>
+                  <span>Create Campaign</span>
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
 
-        {/* Connect Button + Theme Toggle */}
+        {/* ── Right Actions: Network + Theme Toggle + Connect Wallet ── */}
         <div className="flex items-center gap-3">
           {/* Light / Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
             type="button"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            className="p-2.5 min-w-[44px] min-h-[44px] rounded-xl bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300/80 dark:border-slate-700 hover:scale-105 active:scale-95 transition-all text-sm font-semibold flex items-center justify-center cursor-pointer shadow-sm"
+            className="p-2.5 rounded-xl bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300/80 dark:border-slate-700 hover:scale-105 active:scale-95 transition-all text-xs font-semibold flex items-center justify-center cursor-pointer shadow-sm text-[var(--text-primary)]"
           >
-            {theme === 'dark' ? (
-              <span className="flex items-center gap-1.5 text-amber-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-indigo-700">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              </span>
-            )}
+            {theme === 'dark' ? <span className="text-amber-400">☀️</span> : <span className="text-indigo-700">🌙</span>}
           </button>
 
-          {/* Custom Wallet Button with Header Anchored Dropdown Menu */}
+          {/* Connect Button */}
           <ConnectButton.Custom>
             {({
               account,
@@ -135,9 +204,10 @@ export default function Navbar() {
                         <button
                           onClick={openConnectModal}
                           type="button"
-                          className="px-5 py-2.5 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/25 transition-all flex items-center justify-center cursor-pointer"
+                          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/25 transition-all flex items-center gap-2 cursor-pointer btn-vibe"
                         >
-                          Connect Wallet
+                          <span>👛</span>
+                          <span>Connect Wallet</span>
                         </button>
                       );
                     }
@@ -147,7 +217,7 @@ export default function Navbar() {
                         <button
                           onClick={openChainModal}
                           type="button"
-                          className="px-4 py-2 min-h-[44px] rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40 font-extrabold text-xs flex items-center justify-center cursor-pointer"
+                          className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40 font-extrabold text-xs flex items-center justify-center cursor-pointer"
                         >
                           Wrong Network
                         </button>
@@ -155,25 +225,24 @@ export default function Navbar() {
                     }
 
                     return (
-                      <div className="relative" ref={dropdownRef}>
+                      <div className="relative" ref={walletDropdownRef}>
                         <button
-                          onClick={() => setDropdownOpen(!dropdownOpen)}
+                          onClick={() => setWalletDropdownOpen(!walletDropdownOpen)}
                           type="button"
-                          className="px-3.5 py-2 min-h-[44px] rounded-xl theme-card flex items-center gap-2.5 font-extrabold text-xs cursor-pointer hover:border-emerald-500/50 transition-all shadow-sm"
+                          className="px-3.5 py-2 rounded-xl theme-card flex items-center gap-2.5 font-extrabold text-xs cursor-pointer hover:border-emerald-500/50 transition-all shadow-sm"
                         >
                           <div className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold">
                             🌐
                           </div>
                           <span className="font-mono text-[var(--text-primary)]">{account.displayName}</span>
-                          <svg className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 ${walletDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
 
-                        {/* Dropdown Menu */}
-                        {dropdownOpen && (
+                        {/* Wallet Dropdown Menu */}
+                        {walletDropdownOpen && (
                           <div className="absolute right-0 top-full mt-2 w-64 theme-card-solid rounded-2xl shadow-2xl p-4 space-y-3 z-50 animate-fade-in border border-[var(--border-color)]">
-                            {/* Wallet Info Header */}
                             <div className="flex items-center gap-3 border-b border-[var(--border-color)] pb-3">
                               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg flex-shrink-0">
                                 👛
@@ -188,11 +257,10 @@ export default function Navbar() {
                               </div>
                             </div>
 
-                            {/* Actions List */}
                             <div className="space-y-1">
                               <Link
                                 to="/campaigns?filter=MY_CAMPAIGNS"
-                                onClick={() => setDropdownOpen(false)}
+                                onClick={() => setWalletDropdownOpen(false)}
                                 className="w-full p-2.5 rounded-xl hover:bg-[var(--border-subtle)]/30 text-xs font-extrabold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2.5 transition-colors cursor-pointer"
                               >
                                 <span>📁</span>
@@ -212,29 +280,19 @@ export default function Navbar() {
                                 href={`https://sepolia.etherscan.io/address/${account.address}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                onClick={() => setDropdownOpen(false)}
+                                onClick={() => setWalletDropdownOpen(false)}
                                 className="w-full p-2.5 rounded-xl hover:bg-[var(--border-subtle)]/30 text-xs font-extrabold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2.5 transition-colors cursor-pointer"
                               >
                                 <span>🔍</span>
                                 <span>View on Etherscan</span>
                               </a>
-
-                              <Link
-                                to={`/audit/${account.address}`}
-                                onClick={() => setDropdownOpen(false)}
-                                className="w-full p-2.5 rounded-xl hover:bg-[var(--border-subtle)]/30 text-xs font-extrabold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-2.5 transition-colors cursor-pointer"
-                              >
-                                <span>📊</span>
-                                <span>My Audit Dashboard</span>
-                              </Link>
                             </div>
 
-                            {/* Disconnect Action */}
                             <div className="pt-2 border-t border-[var(--border-color)]">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setDropdownOpen(false);
+                                  setWalletDropdownOpen(false);
                                   disconnect();
                                 }}
                                 className="w-full p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -252,8 +310,68 @@ export default function Navbar() {
               );
             }}
           </ConnectButton.Custom>
+
+          {/* Mobile Hamburger Trigger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2.5 rounded-xl bg-slate-200/80 dark:bg-slate-800 border border-[var(--border-color)] text-[var(--text-primary)] md:hidden cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* ── Mobile Navigation Drawer ── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-[var(--border-color)] bg-[var(--bg-card)] p-4 space-y-2 animate-fade-in">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl text-xs font-extrabold text-[var(--text-primary)] hover:bg-[var(--bg-inset)]"
+          >
+            <span>🏠</span>
+            <span>Home</span>
+          </Link>
+
+          <Link
+            to="/news"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl text-xs font-extrabold text-[var(--text-primary)] hover:bg-[var(--bg-inset)]"
+          >
+            <span>📰</span>
+            <span>Crypto News</span>
+          </Link>
+
+          <Link
+            to="/check"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl text-xs font-extrabold text-[var(--text-primary)] hover:bg-[var(--bg-inset)]"
+          >
+            <span>🛡️</span>
+            <span>Check Wallet</span>
+          </Link>
+
+          <Link
+            to="/campaigns"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl text-xs font-extrabold text-[var(--text-primary)] hover:bg-[var(--bg-inset)]"
+          >
+            <span>📋</span>
+            <span>Browse Campaigns</span>
+          </Link>
+
+          <Link
+            to="/create"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl text-xs font-extrabold text-[var(--text-primary)] hover:bg-[var(--bg-inset)]"
+          >
+            <span>➕</span>
+            <span>Create Campaign</span>
+          </Link>
+        </div>
+      )}
     </header>
   );
 }

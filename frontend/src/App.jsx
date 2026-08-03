@@ -8,6 +8,7 @@ import Campaigns from './pages/Campaigns';
 import CampaignDetail from './pages/CampaignDetail';
 import CreateCampaign from './pages/CreateCampaign';
 import AuditDashboard from './pages/AuditDashboard';
+import News from './pages/News';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/news" element={<News />} />
             <Route path="/check" element={<CheckWallet />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/campaigns/:id" element={<CampaignDetail />} />
