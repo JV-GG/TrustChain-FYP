@@ -96,22 +96,22 @@ export default function CheckWallet() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 space-y-10">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
-      <div className="text-center max-w-2xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-extrabold uppercase tracking-wider">
-          🔍 TrustChain Risk Engine
+      <div className="text-center max-w-2xl mx-auto space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-extrabold uppercase tracking-wider">
+          TrustChain Risk Engine
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
-          Wallet Risk Assessment
+        <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
+          On-Chain Wallet Risk Assessment
         </h1>
-        <p className="text-[var(--text-muted)] text-sm leading-relaxed font-medium">
-          Inspect any Ethereum wallet address for transaction anomalies, fund drain ratios, wallet age, and CryptoScamDB flags before donating.
+        <p className="text-[var(--text-muted)] text-xs sm:text-sm leading-relaxed font-medium">
+          Evaluates Ethereum creator wallets for drain ratio anomalies, wallet age, transaction velocity, and CryptoScamDB flags before donating.
         </p>
       </div>
 
       {/* Input Form Card */}
-      <div className="theme-card p-6 sm:p-8 rounded-2xl shadow-xl space-y-4">
+      <div className="theme-card p-6 sm:p-8 rounded-2xl shadow-lg space-y-4">
         <form onSubmit={handleCheck} className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -120,13 +120,13 @@ export default function CheckWallet() {
                 placeholder="Paste Ethereum wallet address (0x...)"
                 value={inputAddress}
                 onChange={(e) => setInputAddress(e.target.value)}
-                className="w-full theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] font-mono placeholder:text-[var(--text-muted)] focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+                className="w-full theme-inset rounded-xl px-4 py-2.5 text-xs text-[var(--text-primary)] font-mono placeholder:text-[var(--text-muted)] focus:outline-none focus:border-emerald-500 transition-colors font-semibold"
               />
               {connectedAddress && (
                 <button
                   type="button"
                   onClick={handleUseConnectedWallet}
-                  className="absolute right-3 top-2.5 text-xs px-2.5 py-1.5 rounded-lg theme-card text-indigo-600 dark:text-indigo-300 font-bold hover:border-indigo-500/50 transition-colors cursor-pointer"
+                  className="absolute right-2.5 top-2 text-[11px] px-2.5 py-1 rounded-lg theme-card text-emerald-600 dark:text-emerald-400 font-extrabold hover:border-emerald-500/40 transition-colors cursor-pointer"
                 >
                   Use My Wallet
                 </button>
@@ -135,7 +135,7 @@ export default function CheckWallet() {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer btn-vibe"
             >
               {loading ? (
                 <>
@@ -147,7 +147,7 @@ export default function CheckWallet() {
                 </>
               ) : (
                 <>
-                  <span>Check Wallet</span>
+                  <span>Analyze Wallet</span>
                   <span>→</span>
                 </>
               )}

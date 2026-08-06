@@ -280,28 +280,28 @@ export default function AuditDashboard() {
   }, [activeId, isCampaignAudit, targetCampaignId, targetAddress]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
       <div className="border-b border-[var(--border-color)] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 uppercase tracking-wider animate-float inline-block">
-            {isCampaignAudit ? '🔍 Campaign Audit & Verification' : '🔍 Wallet Audit & Verification'}
+        <div className="space-y-1">
+          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider inline-block">
+            {isCampaignAudit ? 'Campaign Audit Dossier' : 'Wallet Audit Dossier'}
           </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] mt-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
             {isCampaignAudit && campaignDetails
               ? `Audit: Campaign #${campaignDetails.id} - ${campaignDetails.title}`
               : isCampaignAudit
               ? `Audit: Campaign #${activeId}`
               : 'Wallet Audit Dashboard'}
           </h1>
-          <p className="text-[var(--text-muted)] mt-1 font-mono text-xs break-all font-semibold">
+          <p className="text-[var(--text-muted)] font-mono text-xs break-all font-semibold pt-0.5">
             {isCampaignAudit && campaignDetails ? (
               <span>
-                Creator Address: <span className="text-indigo-600 dark:text-indigo-400">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
+                Creator Address: <span className="text-emerald-600 dark:text-emerald-400">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
               </span>
             ) : (
               <span>
-                Target Address: <span className="text-indigo-600 dark:text-indigo-400">{targetAddress || 'N/A'}</span>
+                Target Address: <span className="text-emerald-600 dark:text-emerald-400">{targetAddress || 'N/A'}</span>
               </span>
             )}
           </p>
@@ -311,14 +311,14 @@ export default function AuditDashboard() {
           {isCampaignAudit && campaignDetails?.owner && (
             <Link
               to={`/audit/${campaignDetails.owner}`}
-              className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-card font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 transition-all cursor-pointer"
+              className="btn-vibe text-xs px-3.5 py-2 rounded-xl theme-card font-extrabold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40 transition-all cursor-pointer"
             >
               Full Wallet Audit →
             </Link>
           )}
           <Link
             to="/check"
-            className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-indigo-500/50 transition-all cursor-pointer"
+            className="btn-vibe text-xs px-3.5 py-2 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-emerald-500/40 transition-all cursor-pointer"
           >
             Check Wallet Risk
           </Link>
@@ -343,21 +343,21 @@ export default function AuditDashboard() {
 
           {/* Stats Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg hover-lift">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">
+            <div className="theme-card p-6 rounded-2xl space-y-1.5 shadow-md hover-lift">
+              <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
                 {isCampaignAudit ? `Campaign #${activeId} Received Funds` : 'Total Donations Received'}
               </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400">{totalDonations.toFixed(4)} ETH</p>
+              <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{totalDonations.toFixed(4)} ETH</p>
               <p className="text-xs text-[var(--text-muted)] font-medium">
                 {isCampaignAudit ? `Incoming ETH donations for Campaign #${activeId}` : 'Total incoming ETH on Sepolia testnet'}
               </p>
             </div>
 
-            <div className="theme-card p-6 rounded-2xl space-y-2 shadow-lg hover-lift">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">
+            <div className="theme-card p-6 rounded-2xl space-y-1.5 shadow-md hover-lift">
+              <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
                 {isCampaignAudit ? `Campaign #${activeId} Disbursed Funds` : 'Total Funds Disbursed'}
               </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-blue-600 dark:text-blue-400">{totalDisbursements.toFixed(4)} ETH</p>
+              <p className="text-3xl sm:text-4xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{totalDisbursements.toFixed(4)} ETH</p>
               <p className="text-xs text-[var(--text-muted)] font-medium">
                 {isCampaignAudit ? `Outgoing ETH withdrawals for Campaign #${activeId}` : 'Total outgoing ETH transfers recorded on-chain'}
               </p>

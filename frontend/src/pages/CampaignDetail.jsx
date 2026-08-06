@@ -442,34 +442,34 @@ export default function CampaignDetail() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-10 space-y-6">
       {/* Navigation Back */}
-      <Link to="/campaigns" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm font-bold transition-colors">
-        ← Back to Campaigns
+      <Link to="/campaigns" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-extrabold transition-colors flex items-center gap-1.5">
+        ← Back to Campaigns Matrix
       </Link>
 
       {/* TOP VERIFICATION ALERT BANNERS */}
       {!isVerifying && badgeType === 'FLAGGED' && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-600 dark:text-rose-300 text-sm font-semibold flex items-center gap-3 shadow-xl animate-fade-in">
-          <span className="text-3xl">⚠️</span>
+        <div className="p-4 sm:p-5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs font-semibold flex items-center gap-3 shadow-xs animate-fade-in">
+          <span className="text-2xl">⚠️</span>
           <div>
-            <p className="font-extrabold text-rose-700 dark:text-rose-200 text-base">
-              WARNING: Flagged Campaign Wallet
+            <p className="font-extrabold text-rose-700 dark:text-rose-200 text-sm">
+              Flagged Campaign Wallet
             </p>
             <p className="text-xs text-rose-600/90 dark:text-rose-300/90 mt-0.5 font-medium">
-              This campaign's wallet has been flagged as high risk. Do not donate without conducting your own due diligence.
+              This campaign owner's wallet has triggered security risk alerts. Exercise due diligence before depositing funds.
             </p>
           </div>
         </div>
       )}
 
       {!isVerifying && badgeType === 'VERIFIED' && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-sm font-semibold flex items-center gap-3 shadow-md">
-          <span className="text-2xl">✓</span>
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-3 shadow-xs">
+          <span className="text-xl">✓</span>
           <div>
-            <p className="font-extrabold text-emerald-800 dark:text-emerald-200">Verified Campaign</p>
+            <p className="font-extrabold text-emerald-800 dark:text-emerald-200">Verified On-Chain Campaign</p>
             <p className="text-xs text-emerald-700 dark:text-emerald-300/90 mt-0.5 font-medium">
-              This campaign has passed TrustChain's automated wallet risk verification.
+              This campaign creator wallet has passed automated on-chain risk verification.
             </p>
           </div>
         </div>
@@ -482,25 +482,25 @@ export default function CampaignDetail() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Main Campaign Info Card */}
-          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-6">
+          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     Campaign #{id}
                   </span>
                   <span className="text-xs font-bold text-[var(--text-muted)]">
-                    {!campaign.isActive ? '🔴 Closed' : isGoalReached ? '🎉 Goal Reached' : '🟢 Active'}
+                    {!campaign.isActive ? 'Closed' : isGoalReached ? 'Goal Reached' : 'Active'}
                   </span>
                 </div>
-                <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mt-2">{campaign.title}</h1>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight mt-2">{campaign.title}</h1>
               </div>
 
               <Link
                 to={`/audit/campaign/${id}`}
-                className="text-xs px-3.5 py-2.5 rounded-xl theme-inset text-[var(--text-primary)] hover:text-emerald-600 dark:hover:text-emerald-400 border border-[var(--border-color)] font-extrabold transition-colors flex items-center gap-2"
+                className="text-xs px-3 py-2 rounded-xl theme-inset text-[var(--text-primary)] hover:text-emerald-600 dark:hover:text-emerald-400 border border-[var(--border-color)] font-extrabold transition-colors flex items-center gap-1.5 self-start sm:self-auto"
               >
-                <span>🔍 View Campaign Audit</span>
+                <span>View Campaign Audit →</span>
               </Link>
             </div>
 
@@ -515,8 +515,8 @@ export default function CampaignDetail() {
             )}
 
             {/* Campaign Owner Address */}
-            <div className="theme-inset p-4 rounded-xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="font-sans font-extrabold text-[var(--text-primary)]">Campaign Owner Address:</span>
+            <div className="theme-inset p-3.5 rounded-xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="font-sans font-extrabold text-[var(--text-primary)]">Campaign Creator:</span>
               <a
                 href={`https://sepolia.etherscan.io/address/${campaign.owner}`}
                 target="_blank"
@@ -528,9 +528,9 @@ export default function CampaignDetail() {
             </div>
 
             {/* Description */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-extrabold text-[var(--text-muted)] uppercase tracking-wider">About this Campaign</h3>
-              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-sm font-medium">{campaign.description}</p>
+            <div className="space-y-1.5">
+              <h3 className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">Campaign Overview</h3>
+              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-xs sm:text-sm font-medium">{campaign.description}</p>
             </div>
 
             {/* IPFS Hash */}

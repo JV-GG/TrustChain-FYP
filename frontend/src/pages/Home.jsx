@@ -46,137 +46,146 @@ export default function Home() {
   }, [totalCampaigns, publicClient]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24 relative overflow-hidden">
-      {/* Dynamic Floating Ambient Background Spheres */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-500/10 dark:bg-indigo-600/20 blur-[120px] rounded-full pointer-events-none -z-10 animate-pulse-glow"></div>
-      <div className="absolute top-96 -left-32 w-80 h-80 bg-purple-500/10 dark:bg-purple-600/15 blur-[100px] rounded-full pointer-events-none -z-10 animate-float"></div>
-      <div className="absolute bottom-10 -right-32 w-96 h-96 bg-emerald-500/10 dark:bg-emerald-600/15 blur-[110px] rounded-full pointer-events-none -z-10 animate-pulse-glow"></div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20 relative overflow-hidden">
+      {/* Subdued Ambient Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-emerald-500/5 dark:bg-emerald-500/10 blur-[140px] rounded-full pointer-events-none -z-10 animate-pulse-glow" />
 
-      {/* Hero Section */}
-      <div className="text-center max-w-3xl mx-auto space-y-8 animate-fade-in relative">
-        {/* Floating Badge */}
-        <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-extrabold tracking-wide uppercase shadow-sm animate-float">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          <span>🛡️ Verified Smart Contract on Sepolia</span>
+      {/* Marquee Hero Section */}
+      <div className="max-w-4xl mx-auto text-center space-y-6 pt-4">
+        {/* Status Pill */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-extrabold tracking-wide uppercase shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Sepolia Contract Verified & Audited</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-          Transparent Crowdfunding Powered by Ethereum
+        {/* Display Heading — Roman, Extrabold, Balanced */}
+        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-[var(--text-primary)] leading-[1.1] [text-wrap:balance]">
+          Autonomous Risk Verification & Escrow Crowdfunding
         </h1>
 
-        <p className="text-base sm:text-lg text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-          TrustChain ensures complete financial transparency with on-chain campaign tracking, non-reentrant escrow, risk analysis, and verifiable fund disbursement logs.
+        {/* Lead Paragraph */}
+        <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed font-medium max-w-2xl mx-auto">
+          TrustChain combines non-reentrant smart contract vault escrow with on-chain risk scoring, drain ratio analysis, and real-time transaction event ledgers.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Link
             to="/campaigns"
-            className="btn-vibe shimmer-effect px-7 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/25 transition-all flex items-center gap-2 cursor-pointer"
+            className="btn-vibe px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
-            <span>Explore Campaigns</span>
-            <span className="transition-transform group-hover:translate-x-1">→</span>
+            <span>Browse Verified Campaigns</span>
+            <span>→</span>
           </Link>
           <Link
-            to="/create"
-            className="btn-vibe px-7 py-3.5 rounded-xl theme-card font-extrabold text-sm text-slate-900 dark:text-white hover:border-indigo-500/50 transition-all cursor-pointer"
+            to="/check"
+            className="btn-vibe px-6 py-3 rounded-xl theme-card font-extrabold text-xs text-[var(--text-primary)] hover:border-emerald-500/40 transition-all cursor-pointer"
           >
-            Start a Campaign
+            Run Wallet Risk Check
           </Link>
         </div>
       </div>
 
-      {/* Stats Section with Hover Lift & Ambient Glow */}
-      <div className="theme-card p-8 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center shadow-xl hover-lift">
-        <div className="space-y-1.5 p-4 rounded-xl hover:bg-[var(--border-subtle)]/20 transition-colors">
-          <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Total Campaigns</span>
-          <p className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">{totalCampaigns}</p>
-          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-            Registered on Sepolia
+      {/* Protocol Metrics Grid */}
+      <div className="theme-card p-6 sm:p-8 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left shadow-lg">
+        <div className="space-y-1.5 p-4 rounded-xl theme-inset">
+          <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Registered Campaigns</span>
+          <p className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">{totalCampaigns}</p>
+          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live Sepolia Ledger
           </span>
         </div>
 
-        <div className="space-y-1.5 p-4 rounded-xl hover:bg-[var(--border-subtle)]/20 transition-colors">
-          <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Verified Campaigns</span>
-          <p className="text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{verifiedCount}</p>
-          <span className="text-xs text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center gap-1">
-            <span>✓</span> Passed Risk Audit
+        <div className="space-y-1.5 p-4 rounded-xl theme-inset">
+          <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Passed Audit Risk</span>
+          <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{verifiedCount}</p>
+          <span className="text-[11px] text-[var(--text-muted)] font-extrabold">
+            Risk Score ≤ 25/100
           </span>
         </div>
 
-        <div className="space-y-1.5 p-4 rounded-xl hover:bg-[var(--border-subtle)]/20 transition-colors">
-          <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-extrabold">Smart Contract</span>
-          <p className="text-xs font-mono font-extrabold text-indigo-700 dark:text-indigo-300 break-all pt-2">
-            {CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-8)}
+        <div className="space-y-1.5 p-4 rounded-xl theme-inset">
+          <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Smart Contract</span>
+          <p className="text-xs font-mono font-extrabold text-[var(--text-primary)] break-all pt-1">
+            {CONTRACT_ADDRESS.slice(0, 12)}...{CONTRACT_ADDRESS.slice(-8)}
           </p>
-          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold">Verified on Etherscan</span>
+          <a
+            href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline block pt-1"
+          >
+            View on Etherscan →
+          </a>
         </div>
 
-        <div className="space-y-1.5 p-4 rounded-xl hover:bg-[var(--border-subtle)]/20 transition-colors">
-          <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Security Escrow</span>
-          <p className="text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">100%</p>
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Non-Reentrant Vault</span>
+        <div className="space-y-1.5 p-4 rounded-xl theme-inset">
+          <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Escrow Protection</span>
+          <p className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">100%</p>
+          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold">
+            Non-Reentrant Vault Guard
+          </span>
         </div>
       </div>
 
-      {/* How It Works Section with Staggered Motion */}
-      <div className="space-y-10">
+      {/* Institutional Workflow Grid */}
+      <div className="space-y-8">
         <div className="text-center space-y-2">
-          <span className="text-xs font-extrabold px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-            How It Works
+          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border-color)] uppercase tracking-wider">
+            Verification Protocol
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] [text-wrap:balance]">Three Steps to Safe Crowdfunding</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight [text-wrap:balance]">
+            Three-Tier Security Protocol
+          </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-emerald-500/50 group cursor-pointer">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
-              1
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="theme-card p-6 sm:p-7 rounded-2xl space-y-4 hover-lift hover:border-emerald-500/40 group">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-base">
+              01
             </div>
-            <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              Check Wallet Risk
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              Risk Engine Analysis
             </h3>
-            <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
-              Paste any wallet address into our Risk Engine to compute risk score, drain ratios, and CryptoScamDB blacklists.
+            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-medium">
+              Evaluates target creator wallets across 5 signals: wallet age, transaction velocity, drain ratios, ETH balance, and CryptoScamDB blacklist databases.
             </p>
-            <Link to="/check" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
-              <span>Try Check Wallet</span>
-              <span className="transition-transform group-hover:translate-x-1">→</span>
+            <Link to="/check" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold inline-flex items-center gap-1 pt-1">
+              <span>Run Risk Assessment</span>
+              <span>→</span>
             </Link>
           </div>
 
-          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-emerald-500/50 group cursor-pointer">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
-              2
+          <div className="theme-card p-6 sm:p-7 rounded-2xl space-y-4 hover-lift hover:border-emerald-500/40 group">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-base">
+              02
             </div>
-            <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              Browse Campaigns
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              Transparent Campaign Discovery
             </h3>
-            <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">
-              Explore verified campaigns on-chain with live funding progress bars and transparent owner profiles.
+            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-medium">
+              Discover verified campaigns with automated risk badges (VERIFIED, CAUTION, HIGH RISK), IPFS metadata hashes, and funding progress.
             </p>
-            <Link to="/campaigns" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
-              <span>Browse Campaigns</span>
-              <span className="transition-transform group-hover:translate-x-1">→</span>
+            <Link to="/campaigns" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold inline-flex items-center gap-1 pt-1">
+              <span>Explore Matrix</span>
+              <span>→</span>
             </Link>
           </div>
 
-          <div className="theme-card p-7 rounded-2xl space-y-5 hover-lift hover:border-emerald-500/50 group cursor-pointer">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-2xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
-              3
+          <div className="theme-card p-6 sm:p-7 rounded-2xl space-y-4 hover-lift hover:border-emerald-500/40 group">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-extrabold text-base">
+              03
             </div>
-            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              Donate Safely
+            <h3 className="text-lg font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              Non-Reentrant Vault Escrow
             </h3>
-            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-medium">
-              Donate ETH directly into non-reentrant contract escrow. Real-time transaction history keeps everything transparent.
+            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-medium">
+              Donations are locked inside smart contract escrow. Campaign owners must disburse funds transparently with full Etherscan event logging.
             </p>
-            <Link to="/create" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1 pt-2">
-              <span>Start a Campaign</span>
-              <span className="transition-transform group-hover:translate-x-1">→</span>
+            <Link to="/create" className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold inline-flex items-center gap-1 pt-1">
+              <span>Deploy Campaign</span>
+              <span>→</span>
             </Link>
           </div>
         </div>
@@ -184,3 +193,4 @@ export default function Home() {
     </div>
   );
 }
+

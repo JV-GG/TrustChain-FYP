@@ -38,7 +38,7 @@ export default function Campaigns() {
 
   const campaignCount = countData ? Number(countData) : 0;
 
-  // Fast BLAZING loading: fetch on-chain campaigns instantly, then load risk badges in parallel background
+  // Fast loading: fetch on-chain campaigns instantly, then load risk badges in parallel background
   useEffect(() => {
     async function fetchAllCampaigns() {
       if (!campaignCount || !publicClient) {
@@ -73,7 +73,6 @@ export default function Campaigns() {
           isActive: c.isActive,
         }));
 
-        // Render campaigns INSTANTLY (< 200ms) without waiting for background calls
         setCampaignsList(formatted);
         setLoading(false);
 
@@ -170,49 +169,49 @@ export default function Campaigns() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[var(--border-color)] pb-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs font-extrabold uppercase tracking-wider animate-float">
-            <span>🌐 On-Chain Crowdfunding</span>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--border-color)] pb-6">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-extrabold uppercase tracking-wider">
+            <span>On-Chain Crowdfunding Matrix</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)]">
-            {filter === 'MY_CAMPAIGNS' ? 'My Created Campaigns' : 'Explore Campaigns'}
+          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
+            {filter === 'MY_CAMPAIGNS' ? 'My Created Campaigns' : 'Browse Verified Campaigns'}
           </h1>
-          <p className="text-[var(--text-muted)] text-sm font-medium">
+          <p className="text-[var(--text-muted)] text-xs font-medium">
             {filter === 'MY_CAMPAIGNS'
-              ? 'Manage and view crowdfunding campaigns published by your wallet on Sepolia.'
-              : 'Browse transparent, smart-contract verified campaigns on Ethereum Sepolia testnet.'}
+              ? 'Manage and monitor campaigns registered by your active wallet on Sepolia.'
+              : 'Explore transparent crowdfunding campaigns verified by TrustChain smart contracts.'}
           </p>
         </div>
 
         <Link
           to="/create"
-          className="btn-vibe shimmer-effect px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 transition-all self-start md:self-auto cursor-pointer"
+          className="btn-vibe px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition-all self-start md:self-auto cursor-pointer"
         >
-          + Create Campaign
+          + Launch Campaign
         </Link>
       </div>
 
-      {/* Filters & Search Toolbar */}
+      {/* Filter Tabs & Search Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2 theme-inset p-1.5 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-1.5 theme-inset p-1 rounded-xl">
           {[
             { id: 'ALL', label: 'All Campaigns' },
-            { id: 'MY_CAMPAIGNS', label: '👤 My Campaigns' },
-            { id: 'ACTIVE', label: '🟢 Active' },
-            { id: 'VERIFIED', label: '✓ Verified' },
-            { id: 'GOAL_REACHED', label: '🎉 Goal Reached' },
+            { id: 'MY_CAMPAIGNS', label: 'My Campaigns' },
+            { id: 'ACTIVE', label: 'Active' },
+            { id: 'VERIFIED', label: 'Verified Only' },
+            { id: 'GOAL_REACHED', label: 'Goal Reached' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 filter === tab.id
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)]/30'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
               }`}
             >
               {tab.label}
@@ -224,60 +223,60 @@ export default function Campaigns() {
         <div className="relative flex-1 max-w-xs">
           <input
             type="text"
-            placeholder="Search campaigns or 0x address..."
+            placeholder="Search title, description, or 0x..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full theme-inset rounded-xl pl-9 pr-4 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+            className="w-full theme-inset rounded-xl pl-8 pr-4 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-emerald-500 transition-colors font-semibold"
           />
-          <span className="absolute left-3 top-2.5 text-xs text-[var(--text-muted)]">🔍</span>
+          <span className="absolute left-2.5 top-2 text-xs text-[var(--text-muted)]">🔍</span>
         </div>
       </div>
 
       {/* MY CAMPAIGNS SUMMARY OVERVIEW BANNER */}
       {filter === 'MY_CAMPAIGNS' && userAddress && (
-        <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl animate-fade-in border border-indigo-500/20">
+        <div className="theme-card p-6 rounded-2xl space-y-5 shadow-lg border border-emerald-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-4">
             <div>
-              <h2 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-                <span>👤</span> My Campaigns Summary Overview
+              <h2 className="text-lg font-extrabold text-[var(--text-primary)]">
+                My Wallet Summary Overview
               </h2>
               <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-                Connected Wallet: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{userAddress}</span>
+                Active Address: <span className="text-emerald-600 dark:text-emerald-400 font-bold">{userAddress}</span>
               </p>
             </div>
             <Link
               to={`/audit/${userAddress}`}
-              className="btn-vibe text-xs px-4 py-2.5 rounded-xl theme-inset font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 transition-all self-start sm:self-auto cursor-pointer"
+              className="btn-vibe text-xs px-3.5 py-2 rounded-xl theme-inset font-extrabold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40 transition-all self-start sm:self-auto cursor-pointer"
             >
-              Full Wallet Audit Dashboard →
+              View Wallet Audit →
             </Link>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase">Created Campaigns</span>
-              <p className="text-2xl font-extrabold text-[var(--text-primary)]">{myCampaigns.length}</p>
+            <div className="theme-inset p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-[var(--text-muted)] uppercase">Created Campaigns</span>
+              <p className="text-xl font-extrabold text-[var(--text-primary)]">{myCampaigns.length}</p>
             </div>
 
-            <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Total Received</span>
-              <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{myTotalRaised.toFixed(4)} ETH</p>
+            <div className="theme-inset p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Total Received</span>
+              <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{myTotalRaised.toFixed(4)} ETH</p>
             </div>
 
-            <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase">Total Disbursed</span>
-              <p className="text-2xl font-extrabold text-[var(--text-primary)]">{myTotalDisbursed.toFixed(4)} ETH</p>
+            <div className="theme-inset p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-[var(--text-muted)] uppercase">Total Disbursed</span>
+              <p className="text-xl font-extrabold text-[var(--text-primary)]">{myTotalDisbursed.toFixed(4)} ETH</p>
             </div>
 
-            <div className="theme-inset p-4 rounded-xl space-y-1">
-              <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Vault Balance</span>
-              <p className="text-2xl font-extrabold text-blue-600 dark:text-blue-400">{myAvailableVault.toFixed(4)} ETH</p>
+            <div className="theme-inset p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Vault Balance</span>
+              <p className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{myAvailableVault.toFixed(4)} ETH</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Campaign Section */}
+      {/* Main Campaign Grid Section */}
       {loading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -290,59 +289,52 @@ export default function Campaigns() {
           ))}
         </div>
       ) : filter === 'MY_CAMPAIGNS' && !userAddress ? (
-        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-xl">
-          <span className="text-4xl">🔌</span>
-          <h3 className="text-xl font-extrabold text-[var(--text-primary)]">Wallet Not Connected</h3>
+        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-lg">
+          <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Wallet Not Connected</h3>
           <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto font-medium">
-            Please connect your wallet to view campaigns created by your address.
+            Connect your Web3 wallet to view campaigns launched under your address.
           </p>
           <div className="flex justify-center pt-2">
             <ConnectButton />
           </div>
         </div>
       ) : filter === 'MY_CAMPAIGNS' && filteredCampaigns.length === 0 ? (
-        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-xl">
-          <span className="text-4xl">📁</span>
-          <h3 className="text-xl font-extrabold text-[var(--text-primary)]">No Campaigns Created Yet</h3>
-          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto font-mono">
-            Connected Wallet: {userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}
+        <div className="theme-card p-12 rounded-2xl text-center space-y-4 animate-fade-in shadow-lg">
+          <h3 className="text-lg font-extrabold text-[var(--text-primary)]">No Campaigns Registered Yet</h3>
+          <p className="text-xs text-[var(--text-muted)] font-mono">
+            Address: {userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}
           </p>
           <p className="text-xs text-[var(--text-muted)] font-medium">
-            You haven't registered any campaigns on-chain under this address.
+            You haven't published any campaigns on-chain under this wallet address.
           </p>
           <div className="pt-2">
             <Link
               to="/create"
-              className="btn-vibe shimmer-effect inline-block px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
+              className="btn-vibe inline-block px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer"
             >
-              + Create My First Campaign
+              + Create First Campaign
             </Link>
           </div>
         </div>
       ) : filteredCampaigns.length === 0 ? (
-        <div className="theme-card p-12 rounded-2xl text-center space-y-3">
-          <span className="text-4xl">🔍</span>
-          <h3 className="text-lg font-extrabold text-[var(--text-primary)]">No Campaigns Found</h3>
+        <div className="theme-card p-12 rounded-2xl text-center space-y-2">
+          <h3 className="text-base font-extrabold text-[var(--text-primary)]">No Campaigns Found</h3>
           <p className="text-xs text-[var(--text-muted)]">No campaigns match your filter or search query.</p>
         </div>
       ) : filter === 'ALL' ? (
-        <div className="space-y-12 animate-fade-in">
-          {/* SECTION 1: Active Crowdfunding */}
-          <div className="space-y-6">
+        <div className="space-y-10 animate-fade-in">
+          {/* Active Crowdfunding */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🔥</span>
-                <h2 className="text-xl font-extrabold text-[var(--text-primary)]">Active Crowdfunding</h2>
-              </div>
+              <h2 className="text-lg font-extrabold text-[var(--text-primary)]">Active Crowdfunding</h2>
               <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {activeCampaigns.length} {activeCampaigns.length === 1 ? 'Campaign' : 'Campaigns'} Active
+                {activeCampaigns.length} Active
               </span>
             </div>
 
             {activeCampaigns.length === 0 ? (
-              <div className="theme-inset p-8 rounded-2xl text-center space-y-1">
-                <p className="text-sm font-bold text-[var(--text-muted)]">No active campaigns currently raising funds.</p>
-                <p className="text-xs text-[var(--text-muted)] font-medium">Be the first to start a new campaign!</p>
+              <div className="theme-inset p-8 rounded-2xl text-center">
+                <p className="text-xs font-bold text-[var(--text-muted)]">No active campaigns currently raising funds.</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -358,21 +350,18 @@ export default function Campaigns() {
             )}
           </div>
 
-          {/* SECTION 2: Completed / Goal Reached */}
-          <div className="space-y-6 pt-4">
+          {/* Completed / Goal Reached */}
+          <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🎉</span>
-                <h2 className="text-xl font-extrabold text-[var(--text-primary)]">Completed & Closed Campaigns</h2>
-              </div>
-              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <h2 className="text-lg font-extrabold text-[var(--text-primary)]">Completed & Closed Campaigns</h2>
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border-color)]">
                 {completedCampaigns.length} Completed
               </span>
             </div>
 
             {completedCampaigns.length === 0 ? (
               <div className="theme-inset p-8 rounded-2xl text-center">
-                <p className="text-sm font-bold text-[var(--text-muted)]">No completed campaigns yet.</p>
+                <p className="text-xs font-bold text-[var(--text-muted)]">No completed campaigns yet.</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -418,19 +407,19 @@ function CampaignCard({ camp, ethPrice, vData }) {
       {/* Top Badge Row */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             Campaign #{camp.id}
           </span>
           <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1.5">
             {!camp.isActive ? (
-              <span className="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 font-extrabold">🔴 Closed</span>
+              <span className="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 font-extrabold">Closed</span>
             ) : isGoalReached ? (
               <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">
-                🎉 Goal Reached
+                Goal Reached
               </span>
             ) : (
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Active
               </span>
             )}
@@ -449,18 +438,18 @@ function CampaignCard({ camp, ethPrice, vData }) {
 
         {/* Title & Description */}
         <div>
-          <h3 className="text-xl font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+          <h3 className="text-lg font-extrabold text-[var(--text-primary)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
             {camp.title}
           </h3>
-          <p className="text-xs text-[var(--text-secondary)] mt-1.5 line-clamp-2 leading-relaxed font-medium">
+          <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed font-medium">
             {camp.description}
           </p>
         </div>
       </div>
 
       {/* Progress Bar & Amount */}
-      <div className="space-y-4 pt-2 border-t border-[var(--border-color)]">
-        <div className="space-y-2">
+      <div className="space-y-3 pt-2 border-t border-[var(--border-color)]">
+        <div className="space-y-1.5">
           <div className="flex justify-between items-end text-xs font-extrabold">
             <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
               {raised} ETH
@@ -473,11 +462,11 @@ function CampaignCard({ camp, ethPrice, vData }) {
             <span className="text-[var(--text-muted)]">{percent}%</span>
           </div>
 
-          <div className="w-full theme-inset h-2.5 rounded-full overflow-hidden">
+          <div className="w-full theme-inset h-2 rounded-full overflow-hidden">
             <div
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out"
+              className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out"
               style={{ width: `${percent}%` }}
-            ></div>
+            />
           </div>
 
           <div className="flex justify-between items-center text-[11px] text-[var(--text-muted)] font-semibold">
@@ -489,12 +478,13 @@ function CampaignCard({ camp, ethPrice, vData }) {
         {/* View Details Link Button */}
         <Link
           to={`/campaigns/${camp.id}`}
-          className="btn-vibe w-full py-2.5 rounded-xl theme-inset text-center text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="btn-vibe w-full py-2 rounded-xl theme-inset text-center text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <span>View Campaign Details</span>
-          <span className="transition-transform group-hover:translate-x-1">→</span>
+          <span>View Campaign Dossier</span>
+          <span>→</span>
         </Link>
       </div>
     </div>
   );
 }
+

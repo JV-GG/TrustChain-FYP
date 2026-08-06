@@ -157,44 +157,41 @@ export default function News() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-fade-in">
       {/* ── Page Header & Title Banner ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[var(--border-color)] pb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--border-color)] pb-5">
         <div>
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-extrabold tracking-wider uppercase mb-1">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-extrabold tracking-wider uppercase mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Real-Time Intelligence Feed
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
-            Crypto Market News
+          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
+            Crypto Market Intelligence
           </h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1 max-w-2xl font-medium">
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-2xl font-medium">
             Aggregated breaking news, security risk alerts, and regulatory updates tailored for Web3 project owners, backers & protocol auditors.
           </p>
         </div>
 
         {/* Live Refresh & Source Badge */}
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all flex items-center gap-2 cursor-pointer ${
               autoRefresh
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-200 dark:bg-slate-800 text-[var(--text-muted)] border-[var(--border-color)]'
+                : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border-[var(--border-color)]'
             }`}
             title="Toggle 60s auto-refresh"
           >
             <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-            {autoRefresh ? 'Auto-Live ON' : 'Auto-Live OFF'}
+            {autoRefresh ? 'Live Sync ON' : 'Live Sync OFF'}
           </button>
 
           <button
             onClick={() => loadNewsData(true)}
             disabled={refreshing}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 btn-vibe"
           >
             <svg className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
