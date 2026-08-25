@@ -98,31 +98,18 @@ export default function AuditDashboard() {
           }
         }
 
-        // 2. Fetch Etherscan txlist for CONTRACT_ADDRESS & user address
-        const queryAddress = isCampaignAudit ? campaignOwner || CONTRACT_ADDRESS : targetAddress;
+        // 2. Query Etherscan for contract transaction list & logs
+        const topic1Hex = targetCampaignId
+          ? '0x' + targetCampaignId.toString(16).padStart(64, '0')
+          : null;
 
-        const [userTxRes, contractTxRes] = await Promise.all([
-          queryAddress
-            ? axios.get('https://api.etherscan.io/v2/api', {
-                params: {
-                  chainid: 11155111,
-                  module: 'account',
-                  action: 'txlist',
-                  address: queryAddress,
-                  startblock: 0,
-                  endblock: 99999999,
-                  sort: 'desc',
-                  apikey: apiKey,
-                },
-                timeout: 10000,
-              }).catch(() => null)
-            : Promise.resolve(null),
+        const [txRes, logRes] = await Promise.all([
           axios.get('https://api.etherscan.io/v2/api', {
             params: {
               chainid: 11155111,
               module: 'account',
               action: 'txlist',
-              address: CONTRACT_ADDRESS,
+              address: isCampaignAudit ? CONTRACT_ADDRESS : targetAddress,
               startblock: 0,
               endblock: 99999999,
               sort: 'desc',
@@ -130,73 +117,60 @@ export default function AuditDashboard() {
             },
             timeout: 10000,
           }).catch(() => null),
+          topic1Hex
+            ? axios.get('https://api.etherscan.io/v2/api', {
+                params: {
+                  chainid: 11155111,
+                  module: 'logs',
+                  action: 'getLogs',
+                  address: CONTRACT_ADDRESS,
+                  topic1: topic1Hex,
+                  startblock: 0,
+                  endblock: 99999999,
+                  apikey: apiKey,
+                },
+                timeout: 10000,
+              }).catch(() => null)
+            : Promise.resolve(null),
         ]);
 
-        const rawUserTxs = userTxRes?.data?.result && Array.isArray(userTxRes.data.result) ? userTxRes.data.result : [];
-        const rawContractTxs = contractTxRes?.data?.result && Array.isArray(contractTxRes.data.result) ? contractTxRes.data.result : [];
+        const matchingHashes = new Set();
+        if (logRes?.data && Array.isArray(logRes.data.result)) {
+          logRes.data.result.forEach((log) => {
+            if (log.transactionHash) {
+              matchingHashes.add(log.transactionHash.toLowerCase());
+            }
+          });
+        }
 
-        // Combine and deduplicate
-        const allTxMap = new Map();
-        [...rawUserTxs, ...rawContractTxs].forEach((tx) => {
-          if (tx.hash) {
-            allTxMap.set(tx.hash.toLowerCase(), tx);
-          }
-        });
-        const combinedTxs = Array.from(allTxMap.values());
+        let rawTxs = [];
+        if (txRes?.data && Array.isArray(txRes.data.result)) {
+          rawTxs = txRes.data.result;
+        }
 
+        const processedTxs = [];
         let donationsSum = 0;
         let disbursementsSum = 0;
-        const processedTxs = [];
         const monthlyTimeline = {};
 
-        combinedTxs.forEach((tx) => {
-          if (tx.isError === '1') return; // Skip reverted txs
-
+        rawTxs.forEach((tx) => {
+          const valEth = Number(formatEther(BigInt(tx.value || '0')));
+          const fnName = (tx.functionName || '').toLowerCase();
           const fromAddr = (tx.from || '').toLowerCase();
           const toAddr = (tx.to || '').toLowerCase();
-          const fnName = (tx.functionName || '').toLowerCase();
 
-          let valEth = 0;
-          try {
-            valEth = Number(formatEther(BigInt(tx.value || '0')));
-          } catch {
-            valEth = Number(tx.value || 0) / 1e18;
-          }
-
-          let type = null;
+          let type = '';
           let calculatedValEth = valEth;
 
-          // Decode input calldata
-          let calldataCampaignId = null;
-          let calldataDisburseAmount = null;
-
-          if (tx.input && tx.input.length >= 74) {
-            try {
-              calldataCampaignId = BigInt('0x' + tx.input.slice(10, 74));
-            } catch {
-              // Ignore
-            }
-          }
-          if (tx.input && tx.input.length >= 138 && fnName.includes('disburse')) {
-            try {
-              calldataDisburseAmount = BigInt('0x' + tx.input.slice(74, 138));
-            } catch {
-              // Ignore
-            }
-          }
-
-          // FILTER CONDITION:
-          // If Campaign Audit: strict match on calldataCampaignId === targetCampaignId
-          // If Wallet Audit: match ownedCampaignIds or direct to/from targetAddress
-          const matchesCampaignScope = isCampaignAudit
-            ? calldataCampaignId === targetCampaignId
-            : ownedCampaignIds.has(calldataCampaignId) || fromAddr === targetAddress || toAddr === targetAddress;
-
-          if (!matchesCampaignScope && (isCampaignAudit || targetAddress)) return;
-
-          // Case A: Disburse Funds
+          // Case A: Disburse
           if (fnName.includes('disburse')) {
             type = 'Disbursement';
+            let calldataDisburseAmount = 0n;
+            if (tx.input && tx.input.length >= 138) {
+              try {
+                calldataDisburseAmount = BigInt('0x' + tx.input.slice(74, 138));
+              } catch {}
+            }
             if (calldataDisburseAmount && calldataDisburseAmount > 0n) {
               calculatedValEth = Number(formatEther(calldataDisburseAmount));
             }
@@ -280,28 +254,29 @@ export default function AuditDashboard() {
   }, [activeId, isCampaignAudit, targetCampaignId, targetAddress]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
-      {/* Header */}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 space-y-8 animate-apple-fade-in">
+      
+      {/* ── Apple Inspector Header ── */}
       <div className="border-b border-[var(--border-color)] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider inline-block">
+        <div className="space-y-1.5">
+          <span className="caption-label px-3 py-1 rounded-full bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)] inline-block">
             {isCampaignAudit ? 'Campaign Audit Dossier' : 'Wallet Audit Dossier'}
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
+          <h1 className="section-title text-[var(--text-primary)]">
             {isCampaignAudit && campaignDetails
               ? `Audit: Campaign #${campaignDetails.id} - ${campaignDetails.title}`
               : isCampaignAudit
               ? `Audit: Campaign #${activeId}`
               : 'Wallet Audit Dashboard'}
           </h1>
-          <p className="text-[var(--text-muted)] font-mono text-xs break-all font-semibold pt-0.5">
+          <p className="text-[var(--text-muted)] font-mono text-xs break-all pt-0.5">
             {isCampaignAudit && campaignDetails ? (
               <span>
-                Creator Address: <span className="text-emerald-600 dark:text-emerald-400">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
+                Creator Address: <span className="text-[var(--apple-green)] font-semibold">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
               </span>
             ) : (
               <span>
-                Target Address: <span className="text-emerald-600 dark:text-emerald-400">{targetAddress || 'N/A'}</span>
+                Target Address: <span className="text-[var(--apple-green)] font-semibold">{targetAddress || 'N/A'}</span>
               </span>
             )}
           </p>
@@ -311,14 +286,14 @@ export default function AuditDashboard() {
           {isCampaignAudit && campaignDetails?.owner && (
             <Link
               to={`/audit/${campaignDetails.owner}`}
-              className="btn-vibe text-xs px-3.5 py-2 rounded-xl theme-card font-extrabold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40 transition-all cursor-pointer"
+              className="text-xs px-4 py-2 rounded-full apple-glass font-semibold text-[var(--apple-green)] hover:border-[var(--apple-green-border)] transition-all cursor-pointer apple-press"
             >
               Full Wallet Audit →
             </Link>
           )}
           <Link
             to="/check"
-            className="btn-vibe text-xs px-3.5 py-2 rounded-xl theme-card font-extrabold text-[var(--text-primary)] hover:border-emerald-500/40 transition-all cursor-pointer"
+            className="text-xs px-4 py-2 rounded-full apple-glass font-semibold text-[var(--text-primary)] hover:border-[var(--apple-blue-border)] transition-all cursor-pointer apple-press"
           >
             Check Wallet Risk
           </Link>
@@ -328,118 +303,118 @@ export default function AuditDashboard() {
       {loading ? (
         <div className="animate-pulse space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="h-28 bg-[var(--border-color)] rounded-2xl"></div>
-            <div className="h-28 bg-[var(--border-color)] rounded-2xl"></div>
+            <div className="h-28 bg-[var(--border-color)] rounded-3xl"></div>
+            <div className="h-28 bg-[var(--border-color)] rounded-3xl"></div>
           </div>
-          <div className="h-64 bg-[var(--border-color)] rounded-2xl"></div>
+          <div className="h-64 bg-[var(--border-color)] rounded-3xl"></div>
         </div>
       ) : (
         <>
           {errorMsg && (
-            <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3.5 rounded-xl border border-rose-500/20 font-bold">
+            <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
               ⚠️ {errorMsg}
             </p>
           )}
 
-          {/* Stats Summary Cards */}
+          {/* ── Stats Summary Cards (Apple Health Style) ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="theme-card p-6 rounded-2xl space-y-1.5 shadow-md hover-lift">
-              <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
+            <div className="apple-glass p-6 sm:p-7 rounded-3xl space-y-1.5 hover-lift">
+              <span className="caption-label text-[var(--text-muted)]">
                 {isCampaignAudit ? `Campaign #${activeId} Received Funds` : 'Total Donations Received'}
               </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{totalDonations.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-muted)] font-medium">
+              <p className="text-3xl sm:text-4xl font-extrabold text-[var(--apple-green)] tracking-tight">{totalDonations.toFixed(4)} ETH</p>
+              <p className="text-xs text-[var(--text-secondary)] font-normal">
                 {isCampaignAudit ? `Incoming ETH donations for Campaign #${activeId}` : 'Total incoming ETH on Sepolia testnet'}
               </p>
             </div>
 
-            <div className="theme-card p-6 rounded-2xl space-y-1.5 shadow-md hover-lift">
-              <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
+            <div className="apple-glass p-6 sm:p-7 rounded-3xl space-y-1.5 hover-lift">
+              <span className="caption-label text-[var(--text-muted)]">
                 {isCampaignAudit ? `Campaign #${activeId} Disbursed Funds` : 'Total Funds Disbursed'}
               </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{totalDisbursements.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-muted)] font-medium">
+              <p className="text-3xl sm:text-4xl font-extrabold text-[var(--apple-blue)] tracking-tight">{totalDisbursements.toFixed(4)} ETH</p>
+              <p className="text-xs text-[var(--text-secondary)] font-normal">
                 {isCampaignAudit ? `Outgoing ETH withdrawals for Campaign #${activeId}` : 'Total outgoing ETH transfers recorded on-chain'}
               </p>
             </div>
           </div>
 
-          {/* Recharts Bar Chart */}
-          <div className="theme-card p-6 rounded-2xl space-y-4 shadow-lg hover-lift">
+          {/* ── Recharts Bar Chart (Apple Translucent Theme) ── */}
+          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 hover-lift">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Donations & Disbursements Timeline</h3>
-              <span className="text-xs text-[var(--text-muted)] font-bold">
+              <h3 className="headline text-[var(--text-primary)]">Donations & Disbursements Timeline</h3>
+              <span className="text-xs text-[var(--text-muted)] font-medium">
                 {isCampaignAudit ? `Campaign #${activeId} Audit Trail` : 'Synchronized by Date'}
               </span>
             </div>
 
             {chartData.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-12 text-center font-medium">No donation or disbursement timeline data available for this target.</p>
+              <p className="text-sm text-[var(--text-muted)] py-12 text-center font-normal">No donation or disbursement timeline data available for this target.</p>
             ) : (
               <div className="h-80 w-full pt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.5} />
-                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 'bold' }} />
-                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 'bold' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.3} />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 500 }} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 500 }} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'var(--bg-card-solid)',
                         borderColor: 'var(--border-color)',
-                        borderRadius: '0.75rem',
+                        borderRadius: '1rem',
                         color: 'var(--text-primary)',
-                        fontWeight: 'bold',
+                        fontWeight: 600,
                         boxShadow: 'var(--shadow-lg)',
                       }}
                     />
-                    <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px', fontWeight: 'bold' }} />
-                    <Bar dataKey="Donations" name="Donations Received (ETH)" fill="#10b981" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="Disbursements" name="Funds Disbursed (ETH)" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                    <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px', fontWeight: 600 }} />
+                    <Bar dataKey="Donations" name="Donations Received (ETH)" fill="#34c759" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="Disbursements" name="Funds Disbursed (ETH)" fill="#5856d6" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
 
-          {/* Transaction History Table */}
-          <div className="theme-card p-6 rounded-2xl space-y-4 shadow-lg hover-lift">
+          {/* ── Transaction History Table (Apple Grouped List) ── */}
+          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 hover-lift">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <h3 className="text-lg font-extrabold text-[var(--text-primary)]">Transaction History</h3>
-              <span className="text-xs text-[var(--text-muted)] font-mono font-bold">{transactions.length} Transactions</span>
+              <h3 className="headline text-[var(--text-primary)]">Transaction History</h3>
+              <span className="text-xs text-[var(--text-muted)] font-mono font-medium">{transactions.length} Transactions</span>
             </div>
 
             {transactions.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-8 text-center font-medium">No ETH donation or disbursement transactions found.</p>
+              <p className="text-sm text-[var(--text-muted)] py-8 text-center font-normal">No ETH donation or disbursement transactions found.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">
+                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                       <th className="py-3 px-3">Date & Time</th>
                       <th className="py-3 px-3">Type</th>
                       <th className="py-3 px-3">Amount (ETH)</th>
                       <th className="py-3 px-3">TxHash</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-color)]">
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
                     {transactions.map((tx, i) => (
-                      <tr key={i} className="hover:bg-[var(--border-subtle)]/30 font-mono transition-colors">
-                        <td className="py-3 px-3 text-[var(--text-secondary)] font-sans font-medium">
+                      <tr key={i} className="hover:bg-[var(--bg-inset)] font-mono transition-colors">
+                        <td className="py-3.5 px-3 text-[var(--text-secondary)] font-sans font-normal">
                           {tx.date} <span className="text-[10px] text-[var(--text-muted)] font-mono ml-1">({tx.time})</span>
                         </td>
-                        <td className="py-3 px-3">
+                        <td className="py-3.5 px-3">
                           <span
-                            className={`px-2.5 py-1 rounded text-[10px] font-extrabold ${
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                               tx.type.includes('Donation')
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                                ? 'bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)]'
+                                : 'bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]'
                             }`}
                           >
                             {tx.type}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-extrabold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</td>
-                        <td className="py-3 px-3 text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
+                        <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</td>
+                        <td className="py-3.5 px-3 text-[var(--apple-blue)] hover:underline font-medium">
                           <a
                             href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
                             target="_blank"

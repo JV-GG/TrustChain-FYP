@@ -108,7 +108,7 @@ export default function CampaignDetail() {
       refetch();
       fetchTransactions();
     }
-  }, [isDisburseSuccess]);
+  }, [isDisburseSuccess, refetch, fetchTransactions]);
 
   // 5. Fetch Etherscan transactions for this campaign's contract interactions
   const fetchTransactions = useCallback(async () => {
@@ -248,15 +248,13 @@ export default function CampaignDetail() {
         const txHash = log.transactionHash;
         const donor = log.args?.donor;
         const amount = log.args?.amount ? Number(formatEther(log.args.amount)) : 0;
-        const logCampaignId = log.args?.campaignId;
-
-        if (txHash && logCampaignId && BigInt(logCampaignId) === BigInt(id)) {
-          setOptimisticTxs((prev) => {
+        if (txHash && donor) {
+          setTransactions((prev) => {
             if (prev.some((t) => t.hash.toLowerCase() === txHash.toLowerCase())) return prev;
             return [
               {
                 hash: txHash,
-                from: donor || '0x...',
+                from: donor,
                 to: CONTRACT_ADDRESS,
                 value: amount,
                 type: 'Donation',
@@ -272,29 +270,16 @@ export default function CampaignDetail() {
     },
   });
 
-  // Trigger celebration confetti + direct instant updates when donation succeeds
+  // Trigger celebration confetti on successful donation
   useEffect(() => {
     if (isDonateSuccess) {
-      if (donateTxHash) {
-        setOptimisticTxs((prev) =>
-          prev.map((t) =>
-            t.hash.toLowerCase() === donateTxHash.toLowerCase() ? { ...t, isPending: false } : t
-          )
-        );
-      }
-
       confetti({
-        particleCount: 120,
-        spread: 80,
+        particleCount: 80,
+        spread: 70,
         origin: { y: 0.6 },
-        colors: ['#10b981', '#6366f1', '#a855f7', '#3b82f6', '#f59e0b'],
+        colors: ['#34c759', '#0071e3', '#ff9500', '#5856d6'],
       });
 
-      // Direct immediate refetch & transaction reload
-      refetch();
-      fetchTransactions();
-
-      // Scheduled follow-ups to catch Etherscan API indexing lag
       const t1 = setTimeout(() => {
         refetch();
         fetchTransactions();
@@ -402,12 +387,12 @@ export default function CampaignDetail() {
 
   if (isLoading || !campaign) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-[var(--border-color)] rounded w-1/3"></div>
+          <div className="h-8 bg-[var(--border-color)] rounded-full w-1/3"></div>
           <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-96 bg-[var(--border-color)] rounded-2xl"></div>
-            <div className="h-96 bg-[var(--border-color)] rounded-2xl"></div>
+            <div className="lg:col-span-2 h-96 bg-[var(--border-color)] rounded-3xl"></div>
+            <div className="h-96 bg-[var(--border-color)] rounded-3xl"></div>
           </div>
         </div>
       </div>
@@ -432,31 +417,33 @@ export default function CampaignDetail() {
   const donationUsd = formatUsd(donationEth, ethPrice);
   const badgeType = verification?.badge || 'UNVERIFIED';
 
-  const triggerGoalCelebration = () => {
-    confetti({
-      particleCount: 100,
-      spread: 100,
-      origin: { y: 0.5 },
-      colors: ['#10b981', '#34d399', '#6366f1', '#a855f7', '#f59e0b'],
-    });
-  };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-6">
-      {/* Navigation Back */}
-      <Link to="/campaigns" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-extrabold transition-colors flex items-center gap-1.5">
-        ← Back to Campaigns Matrix
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 animate-apple-fade-in">
+      
+      {/* ── Breadcrumb Navigation ── */}
+      <Link 
+        to="/campaigns" 
+        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold transition-colors inline-flex items-center gap-1.5 apple-press"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+        <span>Back to Campaigns Matrix</span>
       </Link>
 
-      {/* TOP VERIFICATION ALERT BANNERS */}
+      {/* ── TOP VERIFICATION ALERT BANNERS ── */}
       {!isVerifying && badgeType === 'FLAGGED' && (
-        <div className="p-4 sm:p-5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs font-semibold flex items-center gap-3 shadow-xs animate-fade-in">
-          <span className="text-2xl">⚠️</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] text-[var(--apple-red)] text-xs font-semibold flex items-center gap-3.5 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-[var(--apple-red)] text-white flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
           <div>
-            <p className="font-extrabold text-rose-700 dark:text-rose-200 text-sm">
-              Flagged Campaign Wallet
+            <p className="font-bold text-[var(--apple-red)] text-sm">
+              Flagged Campaign Wallet Alert
             </p>
-            <p className="text-xs text-rose-600/90 dark:text-rose-300/90 mt-0.5 font-medium">
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-normal">
               This campaign owner's wallet has triggered security risk alerts. Exercise due diligence before depositing funds.
             </p>
           </div>
@@ -464,43 +451,50 @@ export default function CampaignDetail() {
       )}
 
       {!isVerifying && badgeType === 'VERIFIED' && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-3 shadow-xs">
-          <span className="text-xl">✓</span>
+        <div className="p-4 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-[var(--apple-green)] text-xs font-semibold flex items-center gap-3.5 shadow-sm">
+          <div className="w-7 h-7 rounded-full bg-[var(--apple-green)] text-white flex items-center justify-center flex-shrink-0">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
           <div>
-            <p className="font-extrabold text-emerald-800 dark:text-emerald-200">Verified On-Chain Campaign</p>
-            <p className="text-xs text-emerald-700 dark:text-emerald-300/90 mt-0.5 font-medium">
+            <p className="font-bold text-[var(--apple-green)]">Verified On-Chain Campaign</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-normal">
               This campaign creator wallet has passed automated on-chain risk verification.
             </p>
           </div>
         </div>
       )}
 
-      {/* === TWO-COLUMN LAYOUT === */}
+      {/* ── TWO-COLUMN APPLE LAYOUT ── */}
       <div className="grid lg:grid-cols-3 gap-6">
 
         {/* LEFT COLUMN — Campaign Info + Donation + Owner Tools (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
 
           {/* Main Campaign Info Card */}
-          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-lg">
+          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]">
                     Campaign #{id}
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-muted)]">
+                  <span className="text-xs font-semibold text-[var(--text-muted)]">
                     {!campaign.isActive ? 'Closed' : isGoalReached ? 'Goal Reached' : 'Active'}
                   </span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight mt-2">{campaign.title}</h1>
+                <h1 className="section-title text-[var(--text-primary)] mt-2">{campaign.title}</h1>
               </div>
 
               <Link
                 to={`/audit/campaign/${id}`}
-                className="text-xs px-3 py-2 rounded-xl theme-inset text-[var(--text-primary)] hover:text-emerald-600 dark:hover:text-emerald-400 border border-[var(--border-color)] font-extrabold transition-colors flex items-center gap-1.5 self-start sm:self-auto"
+                className="text-xs px-3.5 py-2 rounded-full apple-inset text-[var(--text-primary)] hover:border-[var(--apple-blue-border)] font-semibold transition-colors flex items-center gap-1.5 self-start sm:self-auto apple-press"
               >
-                <span>View Campaign Audit →</span>
+                <span>View Campaign Audit</span>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
 
@@ -515,13 +509,13 @@ export default function CampaignDetail() {
             )}
 
             {/* Campaign Owner Address */}
-            <div className="theme-inset p-3.5 rounded-xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="font-sans font-extrabold text-[var(--text-primary)]">Campaign Creator:</span>
+            <div className="apple-inset p-4 rounded-2xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="font-sans font-semibold text-[var(--text-primary)]">Campaign Creator:</span>
               <a
                 href={`https://sepolia.etherscan.io/address/${campaign.owner}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline break-all"
+                className="text-[var(--apple-blue)] font-bold hover:underline break-all"
               >
                 {campaign.owner}
               </a>
@@ -529,15 +523,17 @@ export default function CampaignDetail() {
 
             {/* Description */}
             <div className="space-y-1.5">
-              <h3 className="text-[11px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider">Campaign Overview</h3>
-              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-xs sm:text-sm font-medium">{campaign.description}</p>
+              <span className="caption-label text-[var(--text-muted)]">Campaign Overview</span>
+              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-xs sm:text-sm font-normal">
+                {campaign.description}
+              </p>
             </div>
 
             {/* IPFS Hash */}
             {campaign.ipfsHash && (
-              <div className="theme-inset p-3.5 rounded-xl text-xs font-mono text-[var(--text-muted)] flex items-center justify-between">
-                <span className="font-sans font-extrabold text-[var(--text-primary)]">IPFS Metadata Hash:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">{campaign.ipfsHash}</span>
+              <div className="apple-inset p-3.5 rounded-2xl text-xs font-mono text-[var(--text-muted)] flex items-center justify-between">
+                <span className="font-sans font-semibold text-[var(--text-primary)]">IPFS Metadata Hash:</span>
+                <span className="text-[var(--apple-blue)] font-medium">{campaign.ipfsHash}</span>
               </div>
             )}
 
@@ -545,90 +541,106 @@ export default function CampaignDetail() {
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-end">
                 <div>
-                  <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{raised} ETH</span>
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--apple-green)]">{raised} ETH</span>
                   {ethPrice > 0 && (
-                    <span className="text-sm text-[var(--text-muted)] font-bold ml-2">({formatUsd(raised, ethPrice)})</span>
+                    <span className="text-xs text-[var(--text-muted)] font-semibold ml-2">({formatUsd(raised, ethPrice)})</span>
                   )}
-                  <span className="text-[var(--text-muted)] text-xs font-bold ml-2">of {goal} ETH goal</span>
+                  <span className="text-[var(--text-muted)] text-xs font-medium ml-2">of {goal} ETH goal</span>
                 </div>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">{percent}% Funded</span>
+                <span className="text-[var(--apple-green)] font-bold text-sm">{percent}% Funded</span>
               </div>
 
-              <div className="w-full theme-inset h-3.5 rounded-full overflow-hidden p-0.5 border border-[var(--border-color)]">
+              {/* Apple Progress Bar */}
+              <div className="w-full bg-[var(--bg-inset)] h-2.5 rounded-full overflow-hidden border border-[var(--border-subtle)]">
                 <div
-                  className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-[var(--apple-green)] to-[var(--apple-blue)] h-full rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${percent}%` }}
-                ></div>
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 text-center">
-                <div className="theme-inset p-3.5 rounded-xl">
-                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Goal</span>
-                  <p className="text-base font-extrabold text-[var(--text-primary)] mt-0.5">{goal} ETH</p>
-                  {ethPrice > 0 && <p className="text-[10px] text-[var(--text-muted)]">{formatUsd(goal, ethPrice)}</p>}
+                <div className="apple-inset p-3.5 rounded-2xl">
+                  <span className="caption-label text-[var(--text-muted)]">Target Goal</span>
+                  <p className="text-lg font-bold text-[var(--text-primary)] mt-0.5">{goal} ETH</p>
+                  {ethPrice > 0 && <p className="text-[11px] text-[var(--text-muted)]">{formatUsd(goal, ethPrice)}</p>}
                 </div>
-                <div className="theme-inset p-3.5 rounded-xl">
-                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Total Raised</span>
-                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{raised} ETH</p>
-                  {ethPrice > 0 && <p className="text-[10px] text-[var(--text-muted)]">{formatUsd(raised, ethPrice)}</p>}
+                <div className="apple-inset p-3.5 rounded-2xl">
+                  <span className="caption-label text-[var(--apple-green)]">Total Raised</span>
+                  <p className="text-lg font-bold text-[var(--apple-green)] mt-0.5">{raised} ETH</p>
+                  {ethPrice > 0 && <p className="text-[11px] text-[var(--text-muted)]">{formatUsd(raised, ethPrice)}</p>}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* DONATION SECTION */}
-          <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-6 shadow-sm">
+          {/* ── DONATION SECTION ── */}
+          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-4">
-              <h2 className="text-xl font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-                <span>💳</span>
+              <h2 className="headline text-[var(--text-primary)] flex items-center gap-2">
+                <svg className="w-5 h-5 text-[var(--apple-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="2" y="5" width="20" height="14" rx="2" />
+                  <line x1="2" y1="10" x2="22" y2="10" />
+                </svg>
                 <span>Make a Transparent Donation</span>
               </h2>
 
               <Link
                 to="/check"
-                className={`text-xs px-3.5 py-2 min-h-[44px] rounded-xl font-extrabold transition-all flex items-center gap-1.5 ${
+                className={`text-xs px-3.5 py-2 rounded-full font-semibold transition-all flex items-center gap-1.5 apple-press ${
                   badgeType === 'CAUTION'
-                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-2 border-amber-500/60'
-                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                    ? 'bg-[var(--apple-amber-tint)] text-[var(--apple-amber)] border border-[var(--apple-amber-border)]'
+                    : 'apple-inset text-[var(--text-secondary)] hover:border-[var(--apple-blue-border)]'
                 }`}
               >
-                <span>🛡️ Check Wallet Risk First</span>
+                <span>Check Wallet Risk First →</span>
               </Link>
             </div>
 
             {/* Block donation form if FLAGGED, INACTIVE, or GOAL REACHED */}
             {!campaign.isActive ? (
-              <div className="p-6 rounded-2xl theme-inset text-center space-y-2">
-                <span className="text-3xl">🔴</span>
-                <h3 className="text-base font-extrabold text-[var(--text-primary)]">Campaign Deactivated</h3>
-                <p className="text-xs text-[var(--text-muted)] font-medium">This campaign has been closed by the owner and can no longer receive donations.</p>
+              <div className="p-6 rounded-2xl apple-inset text-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-[var(--apple-red-tint)] text-[var(--apple-red)] flex items-center justify-center mx-auto">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </div>
+                <h3 className="headline text-[var(--text-primary)]">Campaign Deactivated</h3>
+                <p className="text-xs text-[var(--text-muted)] font-normal">This campaign has been closed by the owner and can no longer receive donations.</p>
               </div>
             ) : isGoalReached ? (
-              <div className="p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-4 shadow-sm relative overflow-hidden group">
-                <div className="inline-block p-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-4xl motion-reduce:animate-none animate-pulse-glow transition-transform duration-300 hover:scale-105">
-                  🎉
+              <div className="p-8 rounded-3xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-center space-y-4 shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-[var(--apple-green)] text-white flex items-center justify-center mx-auto shadow-md">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m9 12 2 2 4-4"/>
+                  </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 tracking-tight">
+                  <h3 className="headline text-[var(--apple-green)]">
                     Target Goal Successfully Reached!
                   </h3>
-                  <p className="text-xs text-emerald-800 dark:text-emerald-400 max-w-md mx-auto leading-relaxed font-semibold mt-1">
-                    This campaign has met its full funding goal of <span className="font-extrabold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors — donations are now complete!
+                  <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal mt-1">
+                    This campaign has met its full funding goal of <span className="font-bold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors!
                   </p>
                 </div>
               </div>
             ) : badgeType === 'FLAGGED' ? (
-              <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-3">
-                <span className="text-4xl">🚫</span>
-                <h3 className="text-lg font-extrabold text-rose-700 dark:text-rose-200">Donations Blocked for Flagged Campaign</h3>
-                <p className="text-xs text-rose-800 dark:text-rose-300 max-w-md mx-auto leading-relaxed font-semibold">
+              <div className="p-6 rounded-3xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] text-center space-y-3">
+                <div className="w-10 h-10 rounded-full bg-[var(--apple-red)] text-white flex items-center justify-center mx-auto">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                </div>
+                <h3 className="headline text-[var(--apple-red)]">Donations Blocked for Flagged Campaign</h3>
+                <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal">
                   This campaign's owner wallet failed security risk checks or is blacklisted on CryptoScamDB. Direct donations are disabled for donor safety.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleDonate} className="space-y-5">
                 <div className="space-y-2.5">
-                  <label className="text-xs font-extrabold text-[var(--text-secondary)] uppercase tracking-wider">Donation Amount (ETH)</label>
+                  <label className="caption-label text-[var(--text-muted)]">Donation Amount (ETH)</label>
 
                   {/* Quick Preset Amount Buttons */}
                   <div className="flex flex-wrap items-center gap-2 pb-1">
@@ -637,10 +649,10 @@ export default function CampaignDetail() {
                         key={preset}
                         type="button"
                         onClick={() => setDonationEth(preset)}
-                        className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                        className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer apple-press ${
                           donationEth === preset
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                            : 'theme-inset text-[var(--text-secondary)] hover:border-emerald-500/50'
+                            ? 'bg-[var(--apple-blue)] text-white border-[var(--apple-blue)] shadow-sm'
+                            : 'apple-inset text-[var(--text-secondary)] hover:border-[var(--apple-blue-border)]'
                         }`}
                       >
                         + {preset} ETH
@@ -655,12 +667,12 @@ export default function CampaignDetail() {
                       placeholder="Enter amount in ETH (e.g. 0.001, 0.05)"
                       value={donationEth}
                       onChange={(e) => setDonationEth(e.target.value)}
-                      className="flex-1 theme-inset rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-emerald-500 font-semibold"
+                      className="flex-1 apple-inset rounded-2xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] font-semibold"
                     />
                     <button
                       type="submit"
                       disabled={isDonatePending || isDonateConfirming}
-                      className="px-6 py-3 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
+                      className="px-6 py-3 rounded-full bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer apple-press"
                     >
                       {isDonatePending || isDonateConfirming ? (
                         <>
@@ -676,7 +688,7 @@ export default function CampaignDetail() {
                     </button>
                   </div>
                   {donationEth && Number(donationEth) > 0 && ethPrice > 0 && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold pl-1">
+                    <p className="text-xs text-[var(--apple-green)] font-semibold pl-1">
                       ≈ {donationUsd} USD
                       <span className="text-[var(--text-muted)] ml-2 font-normal">(1 ETH = ${ethPrice.toLocaleString()})</span>
                     </p>
@@ -684,37 +696,37 @@ export default function CampaignDetail() {
                 </div>
 
                 {donationError && (
-                  <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
+                  <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
                     ⚠️ {donationError}
                   </p>
                 )}
 
                 {/* Donation Pending */}
                 {(isDonatePending || isDonateConfirming) && (
-                  <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-3">
+                  <div className="p-4 rounded-2xl bg-[var(--apple-blue-tint)] border border-[var(--apple-blue-border)] flex items-center gap-3">
                     <span className="text-xl">⏳</span>
                     <div className="text-xs">
-                      <p className="font-extrabold text-indigo-700 dark:text-indigo-200">
+                      <p className="font-bold text-[var(--apple-blue)]">
                         {isDonatePending ? 'Confirm donation in your wallet...' : 'Waiting for block confirmation...'}
                       </p>
-                      {donateTxHash && <p className="text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">Tx: {donateTxHash.slice(0, 10)}...{donateTxHash.slice(-8)}</p>}
+                      {donateTxHash && <p className="text-[var(--text-muted)] font-mono mt-0.5">Tx: {donateTxHash.slice(0, 10)}...{donateTxHash.slice(-8)}</p>}
                     </div>
                   </div>
                 )}
 
                 {/* Donation Success */}
                 {isDonateSuccess && donateTxHash && (
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 animate-fade-in">
-                    <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-                      <span>🎉</span> Thank You! Your Donation Has Been Received On-Chain.
+                  <div className="p-4 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] space-y-1 animate-apple-fade-in">
+                    <p className="text-xs font-bold text-[var(--apple-green)] flex items-center gap-2">
+                      <span>✓</span> Thank You! Your Donation Has Been Received On-Chain.
                     </p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    <p className="text-xs text-[var(--text-secondary)]">
                       Transaction Hash:{' '}
                       <a
                         href={`https://sepolia.etherscan.io/tx/${donateTxHash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="underline font-mono font-bold"
+                        className="underline font-mono font-semibold text-[var(--apple-blue)]"
                       >
                         {donateTxHash.slice(0, 12)}...{donateTxHash.slice(-8)}
                       </a>
@@ -725,28 +737,28 @@ export default function CampaignDetail() {
             )}
           </div>
 
-          {/* OWNER MANAGEMENT: Disburse Funds (Campaign Owner Only) */}
+          {/* ── OWNER MANAGEMENT: Disburse Funds ── */}
           {isOwner && (
-            <div className="theme-card p-6 sm:p-8 rounded-2xl space-y-4 shadow-xl border-indigo-500/30">
+            <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 border border-[var(--apple-blue-border)]">
               <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
                 <div>
-                  <h3 className="text-lg font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-                    <span>💰</span> Owner Management: Disburse Funds
+                  <h3 className="headline text-[var(--text-primary)] flex items-center gap-2">
+                    <span>Vault Escrow Disbursement</span>
                   </h3>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Withdraw raised donations from the smart contract escrow directly to your personal wallet.
+                    Withdraw raised donations from the smart contract escrow directly to your creator wallet.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 theme-inset p-4 rounded-xl text-center">
+              <div className="grid grid-cols-2 gap-4 apple-inset p-4 rounded-2xl text-center">
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Available to Claim</span>
-                  <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{availableEth} ETH</p>
+                  <span className="caption-label text-[var(--text-muted)]">Available to Claim</span>
+                  <p className="text-xl font-bold text-[var(--apple-green)] mt-0.5">{availableEth} ETH</p>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-extrabold">Already Disbursed</span>
-                  <p className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{disbursedEth} ETH</p>
+                  <span className="caption-label text-[var(--text-muted)]">Already Disbursed</span>
+                  <p className="text-xl font-bold text-[var(--apple-blue)] mt-0.5">{disbursedEth} ETH</p>
                 </div>
               </div>
 
@@ -759,51 +771,51 @@ export default function CampaignDetail() {
                       placeholder={`Max: ${availableEth} ETH`}
                       value={disburseAmountEth}
                       onChange={(e) => setDisburseAmountEth(e.target.value)}
-                      className="flex-1 theme-inset rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 font-semibold"
+                      className="flex-1 apple-inset rounded-2xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] font-semibold"
                     />
                     <button
                       type="button"
                       onClick={() => setDisburseAmountEth(availableEth)}
-                      className="px-3 py-2.5 rounded-xl theme-card text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500/50 cursor-pointer"
+                      className="px-3.5 py-2 rounded-full apple-inset text-xs font-semibold text-[var(--apple-blue)] hover:border-[var(--apple-blue-border)] cursor-pointer apple-press"
                     >
                       Max
                     </button>
                     <button
                       type="submit"
                       disabled={isDisbursePending || isDisburseConfirming}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                      className="px-6 py-2.5 rounded-full bg-[var(--apple-green)] hover:bg-[var(--apple-green-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer apple-press"
                     >
                       {isDisbursePending || isDisburseConfirming ? 'Disbursing...' : 'Disburse Funds'}
                     </button>
                   </div>
 
                   {disburseError && (
-                    <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
+                    <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3 rounded-2xl border border-[var(--apple-red-border)] font-medium">
                       ⚠️ {disburseError}
                     </p>
                   )}
 
                   {isDisburseSuccess && (
-                    <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 font-extrabold">
-                      🎉 Funds successfully transferred from smart contract to your wallet!
+                    <div className="p-3.5 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-xs text-[var(--apple-green)] font-semibold">
+                      ✓ Funds successfully transferred from smart contract to your wallet!
                     </div>
                   )}
                 </form>
               ) : (
-                <p className="text-xs text-[var(--text-muted)] text-center py-2 font-medium">
+                <p className="text-xs text-[var(--text-muted)] text-center py-2 font-normal">
                   No available balance to disburse at this time.
                 </p>
               )}
             </div>
           )}
 
-          {/* DANGER ZONE: Deactivate Campaign (Campaign Owner Only) */}
+          {/* ── DANGER ZONE: Deactivate Campaign ── */}
           {isOwner && campaign.isActive && (
-            <div className="theme-card p-6 sm:p-8 rounded-2xl border-rose-500/30 space-y-4 shadow-xl">
+            <div className="apple-glass p-6 sm:p-8 rounded-3xl border border-[var(--apple-red-border)] space-y-4">
               <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
                 <div>
-                  <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-300 flex items-center gap-2">
-                    <span>🛑</span> Danger Zone
+                  <h3 className="headline text-[var(--apple-red)]">
+                    Danger Zone
                   </h3>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     Deactivating this campaign will permanently close donations on-chain.
@@ -812,28 +824,22 @@ export default function CampaignDetail() {
               </div>
 
               {deactivateError && (
-                <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 font-bold">
+                <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3 rounded-2xl border border-[var(--apple-red-border)] font-medium">
                   ⚠️ {deactivateError}
                 </p>
               )}
 
               {(isDeactivatePending || isDeactivateConfirming) && (
-                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3">
+                <div className="p-4 rounded-2xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] flex items-center gap-3">
                   <span className="text-xl">⏳</span>
                   <div className="text-xs">
-                    <p className="font-bold text-rose-700 dark:text-rose-200">
+                    <p className="font-bold text-[var(--apple-red)]">
                       {isDeactivatePending ? 'Confirm deactivation in your wallet...' : 'Deactivating campaign on-chain...'}
                     </p>
                     {deactivateTxHash && (
-                      <p className="text-rose-600 dark:text-rose-400 font-mono mt-0.5">Tx: {deactivateTxHash.slice(0, 10)}...{deactivateTxHash.slice(-8)}</p>
+                      <p className="text-[var(--apple-red)] font-mono mt-0.5">Tx: {deactivateTxHash.slice(0, 10)}...{deactivateTxHash.slice(-8)}</p>
                     )}
                   </div>
-                </div>
-              )}
-
-              {isDeactivateSuccess && (
-                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 font-extrabold">
-                  🎉 Campaign Deactivated! Redirecting to campaigns page...
                 </div>
               )}
 
@@ -841,7 +847,7 @@ export default function CampaignDetail() {
                 type="button"
                 onClick={handleDeactivate}
                 disabled={isDeactivatePending || isDeactivateConfirming}
-                className="w-full py-3 rounded-xl bg-transparent hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/50 hover:border-rose-500 text-sm font-extrabold transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="w-full py-3 rounded-full bg-transparent hover:bg-[var(--apple-red-tint)] text-[var(--apple-red)] border border-[var(--apple-red-border)] hover:border-[var(--apple-red)] text-xs font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer apple-press"
               >
                 Deactivate Campaign
               </button>
@@ -852,17 +858,17 @@ export default function CampaignDetail() {
 
         {/* RIGHT COLUMN — Transaction History (1/3 width) */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="theme-card p-5 rounded-2xl shadow-xl sticky top-20">
+          <div className="apple-glass p-5 sm:p-6 rounded-3xl sticky top-20">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3 mb-4">
-              <h3 className="text-base font-extrabold text-[var(--text-primary)] flex items-center gap-2">
-                <span>📜</span> Contract Transactions
+              <h3 className="headline text-[var(--text-primary)] text-sm flex items-center gap-2">
+                <span>Contract Ledger</span>
               </h3>
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping inline-block"></span>
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--apple-green)] bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] px-2.5 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--apple-green)] animate-pulse inline-block"></span>
                   Live
                 </span>
-                <span className="text-[10px] font-mono text-[var(--text-muted)] theme-inset px-2 py-0.5 rounded font-bold">
+                <span className="text-[10px] font-mono text-[var(--text-muted)] apple-inset px-2 py-0.5 rounded-full font-bold">
                   {displayTransactions.length} txs
                 </span>
               </div>
@@ -872,8 +878,8 @@ export default function CampaignDetail() {
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="animate-pulse space-y-2">
-                    <div className="h-3 bg-[var(--border-color)] rounded w-3/4"></div>
-                    <div className="h-3 bg-[var(--border-color)] rounded w-1/2"></div>
+                    <div className="h-3 bg-[var(--border-color)] rounded-full w-3/4"></div>
+                    <div className="h-3 bg-[var(--border-color)] rounded-full w-1/2"></div>
                     <div className="h-px bg-[var(--border-color)] mt-2"></div>
                   </div>
                 ))}
@@ -881,35 +887,35 @@ export default function CampaignDetail() {
             ) : displayTransactions.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)] text-center py-8">No transactions found for this campaign.</p>
             ) : (
-              <div className="space-y-1.5 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
+              <div className="space-y-2 max-h-[68vh] overflow-y-auto pr-1">
                 {displayTransactions.map((tx, i) => (
-                  <div key={i} className="p-3 rounded-xl hover:bg-[var(--border-subtle)]/30 transition-colors border border-transparent hover:border-[var(--border-color)]">
+                  <div key={i} className="p-3 rounded-2xl hover:bg-[var(--bg-inset)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                             tx.type === 'Donation'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                              ? 'bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)]'
                               : tx.type === 'Disbursement'
-                              ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                              ? 'bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]'
                               : tx.type === 'Campaign Deactivated'
-                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                              ? 'bg-[var(--apple-red-tint)] text-[var(--apple-red)] border border-[var(--apple-red-border)]'
                               : tx.type === 'Campaign Created'
                               ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                              : 'theme-inset text-[var(--text-muted)]'
+                              : 'apple-inset text-[var(--text-muted)]'
                           }`}
                         >
                           {tx.type}
                         </span>
                         {tx.isPending && (
-                          <span className="text-[9px] font-bold text-amber-600 dark:text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded animate-pulse">
-                            ⏳ Confirming...
+                          <span className="text-[9px] font-bold text-[var(--apple-amber)] bg-[var(--apple-amber-tint)] border border-[var(--apple-amber-border)] px-1.5 py-0.5 rounded-full animate-pulse">
+                            ⏳ Confirming
                           </span>
                         )}
                       </div>
                       {tx.value > 0 && (
                         <div className="text-right">
-                          <span className="text-xs font-extrabold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</span>
+                          <span className="text-xs font-bold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</span>
                           {ethPrice > 0 && (
                             <span className="text-[10px] text-[var(--text-muted)] ml-1">({formatUsd(tx.value, ethPrice)})</span>
                           )}
@@ -929,7 +935,7 @@ export default function CampaignDetail() {
                         href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-indigo-600 dark:text-indigo-400 hover:underline font-mono block"
+                        className="text-[var(--apple-blue)] hover:underline font-mono block pt-0.5"
                       >
                         {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
                       </a>
@@ -940,14 +946,15 @@ export default function CampaignDetail() {
             )}
 
             {/* Etherscan Link */}
-            <div className="pt-4 border-t border-[var(--border-color)] mt-4">
+            <div className="pt-3 border-t border-[var(--border-color)] mt-3">
               <a
                 href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-extrabold flex items-center gap-1"
+                className="text-xs text-[var(--apple-blue)] hover:underline font-semibold flex items-center justify-between apple-press"
               >
-                View all on Etherscan →
+                <span>View Full Contract on Etherscan</span>
+                <span>→</span>
               </a>
             </div>
           </div>

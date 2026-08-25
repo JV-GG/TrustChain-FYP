@@ -1,72 +1,64 @@
-# Design System
+# Design System — Apple Design Human Interface
 
-<!-- impeccable:design-schema 1 -->
+<!-- apple-design-schema 1 -->
 
 ## Visual Identity & Aesthetic World
 
-**Direction**: Clean Minimalist Institutional
-An authoritative, crisp, and high-trust interface system designed for campaign creators and non-profits. Emphasizes maximum legibility, subtle structural borders, ultra-restrained accent colors, and structural clarity over decorative slop.
+**Direction**: Apple Human Interface / Clean Frosted Translucency
+An authoritative, crisp, and high-trust interface system inspired by Apple's WWDC *Designing Fluid Interfaces*, macOS/iOS materials, and Emil Kowalski's craft standards. Emphasizes optical typography hierarchy, continuous curvature, translucent glass surfaces, dual-layer ambient/key shadows, and instant physical touch feedback.
 
 ---
 
-## Color System (Restrained OKLCH)
+## 1. Color System (Apple System Vibrancy)
 
 ### Light Mode Ramps
-- **Background App**: `oklch(0.985 0.005 240)` (`#f8fafc`)
-- **Card Surface**: `oklch(1.0 0 0)` (`#ffffff`)
-- **Card Surface Subtly Inset**: `oklch(0.965 0.005 240)` (`#f1f5f9`)
-- **Text Primary (Ink)**: `oklch(0.20 0.02 240)` (`#0f172a`)
-- **Text Muted**: `oklch(0.48 0.02 240)` (`#475569`)
-- **Border Default**: `oklch(0.90 0.01 240)` (`#e2e8f0`)
-- **Accent Primary (Verification Emerald)**: `oklch(0.62 0.17 150)` (`#059669`)
-- **Accent Interactive (Slate / Navy)**: `oklch(0.30 0.05 250)` (`#1e293b`)
+- **Background App**: `#f5f5f7` (Apple Light Canvas)
+- **Glass Card Surface**: `rgba(255, 255, 255, 0.82)` with `backdrop-filter: blur(24px) saturate(180%)`
+- **Solid Card Surface**: `#ffffff`
+- **Inset Wells**: `rgba(0, 0, 0, 0.035)`
+- **Text Primary (Ink)**: `#1d1d1f`
+- **Text Secondary**: `#515154`
+- **Text Muted**: `#86868b`
+- **Border Default**: `rgba(0, 0, 0, 0.08)`
+- **Border Subtle**: `rgba(0, 0, 0, 0.04)`
+- **Apple System Green (Verified)**: `#34c759` (Tint: `rgba(52, 199, 89, 0.12)`)
+- **Apple System Blue (Interactive)**: `#0071e3` (Tint: `rgba(0, 113, 227, 0.10)`)
+- **Apple System Amber (Caution)**: `#ff9500` (Tint: `rgba(255, 149, 0, 0.12)`)
+- **Apple System Red (Flagged)**: `#ff3b30` (Tint: `rgba(255, 59, 48, 0.12)`)
 
 ### Dark Mode Ramps
-- **Background App**: `oklch(0.14 0.02 240)` (`#090d16`)
-- **Card Surface**: `oklch(0.18 0.02 240)` (`#111827`)
-- **Card Surface Subtly Inset**: `oklch(0.22 0.02 240)` (`#1f2937`)
-- **Text Primary (Ink)**: `oklch(0.96 0.005 240)` (`#f8fafc`)
-- **Text Muted**: `oklch(0.68 0.02 240)` (`#94a3b8`)
-- **Border Default**: `oklch(0.28 0.02 240)` (`#334155`)
-- **Accent Primary (Verification Emerald)**: `oklch(0.72 0.16 150)` (`#10b981`)
-- **Accent Interactive (Slate Light)**: `oklch(0.85 0.02 240)` (`#e2e8f0`)
+- **Background App**: `#000000` (Apple True Black Canvas)
+- **Glass Card Surface**: `rgba(28, 28, 32, 0.72)` with `backdrop-filter: blur(24px) saturate(180%)`
+- **Solid Card Surface**: `#1c1c1e`
+- **Inset Wells**: `rgba(255, 255, 255, 0.05)`
+- **Text Primary (Ink)**: `#f5f5f7`
+- **Text Secondary**: `#a1a1a6`
+- **Text Muted**: `#6e6e73`
+- **Border Default**: `rgba(255, 255, 255, 0.10)`
+- **Border Subtle**: `rgba(255, 255, 255, 0.06)`
+- **Apple System Green (Verified)**: `#30d158` (Tint: `rgba(48, 209, 88, 0.15)`)
+- **Apple System Blue (Interactive)**: `#2997ff` (Tint: `rgba(41, 151, 255, 0.15)`)
+- **Apple System Amber (Caution)**: `#ff9f0a` (Tint: `rgba(255, 159, 10, 0.15)`)
+- **Apple System Red (Flagged)**: `#ff453a` (Tint: `rgba(255, 69, 58, 0.15)`)
 
 ---
 
-## Typography
+## 2. Typography & Optical Hierarchy
 
-- **Font Family**: Modern Geometric Sans (`Inter`, `system-ui`, `-apple-system`, `sans-serif`)
-- **Data & Monospace**: `ui-monospace`, `SFMono-Regular`, `Consolas`, `monospace`
-- **Heading Rules**:
-  - `h1`: 2.5rem – 3.75rem (40px–60px), Font Weight 800 (Extrabold), Tracking `-0.03em`, `text-wrap: balance`
-  - `h2`: 1.75rem – 2.25rem (28px–36px), Font Weight 800 (Extrabold), Tracking `-0.02em`
-  - `h3`: 1.25rem – 1.5rem (20px–24px), Font Weight 700 (Bold)
-- **Body & Measure**: 65–75ch max measure for prose, line-height 1.625 for optimal readability.
-
----
-
-## Motion & Interactions
-
-- **Easing**: Exponential ease-out (`cubic-bezier(0.16, 1, 0.3, 1)`)
-- **Duration**: Fast micro-interactions (150ms–250ms)
-- **Motion Reduction**: `motion-reduce:transition-none` & `motion-reduce:animate-none` applied universally
-- **Interactive Feedback**: Distinct hover borders (`border-emerald-500/50`), subtle 1px elevation lift (`transform: translateY(-2px)`), no unprompted image zooming.
+- **System Stack**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif`
+- **Monospace Stack**: `ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace`
+- **Display Headings**:
+  - `display-title`: 40px–60px, Weight 800, Tracking `-0.035em`, Line-height `1.08`, `text-wrap: balance`
+  - `section-title`: 24px–36px, Weight 700, Tracking `-0.028em`, Line-height `1.15`
+  - `headline`: 20px, Weight 600, Tracking `-0.02em`
+- **Uppercase Labels**: 11px, Weight 700, Tracking `+0.05em`, uppercase
 
 ---
 
-## Component Guidelines
+## 3. Motion & Micro-Interactions
 
-### 1. Campaign Discovery Cards
-- Crisp white/dark-slate background with subtle 1px border.
-- Institutional category pill (`oklch(0.62 0.17 150)` / emerald border).
-- High-contrast goal progress bar with clear `ETH Raised` fraction and percentage pill.
-
-### 2. Campaign Detail & Donation Modal
-- Hero section featuring verification badge, owner wallet shortcode, and key funding stats.
-- Clear numeric donation input with min 44px tap targets for preset ETH buttons (0.01, 0.05, 0.1 ETH).
-- Instant transaction feedback state.
-
-### 3. Risk & Verification Badges
-- `VERIFIED`: Solid emerald badge with subtle checkmark.
-- `UNVERIFIED`: Neutral cool gray pill with informative hover tooltip.
-- `HIGH RISK`: Controlled amber/rose warning banner.
+- **Instant Response on Press**: `.apple-press:active { transform: scale(0.97); opacity: 0.90; transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1); }`
+- **Critically Damped Settling**: `cubic-bezier(0.16, 1, 0.3, 1)`
+- **Continuous Elevation**: Smooth 3px lift on hover (`hover-lift`) with dual-layer shadow expansion.
+- **Segmented Controls**: Native sliding pill segmented controls (`.apple-segmented`).
+- **Reduced Motion**: Full compliance with `prefers-reduced-motion: reduce`.
