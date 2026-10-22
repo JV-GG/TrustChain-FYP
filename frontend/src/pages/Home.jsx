@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { formatEther } from 'viem';
 import { CONTRACT_ADDRESS } from '../config/contract';
 import { useCampaigns } from '../hooks/useCampaigns';
-import CampaignCard, { CampaignCardSkeleton } from '../components/CampaignCard';
+import CampaignCard, { CampaignCardSkeleton, LaunchTile } from '../components/CampaignCard';
 import VerificationBadge from '../components/VerificationBadge';
 import { ArrowIcon, AlertIcon, CheckIcon, RiskScale } from '../components/ui';
 import { signalPoints } from '../lib/risk';
@@ -57,11 +57,11 @@ export default function Home() {
 
   return (
     <>
-      <section className="page grid items-center gap-14 pt-16 pb-16 sm:pt-[88px] sm:pb-[72px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))' }}>
+      <section className="page grid items-center gap-14 xl:gap-20 pt-16 pb-16 sm:pt-[104px] sm:pb-24" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 520px), 1fr))' }}>
         <div className="flex flex-col gap-6">
           <span className="eyebrow">Escrow crowdfunding · Ethereum Sepolia</span>
           <h1 className="display">Give to campaigns you can check first.</h1>
-          <p className="lead text-lg max-w-[34rem]">
+          <p className="lead text-lg xl:text-[19px] max-w-[38rem]">
             TrustChain scores every creator's wallet before you donate, holds your ETH in a non-reentrant escrow contract, and records every payout as a public event.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
@@ -103,7 +103,7 @@ export default function Home() {
         </div>
         <div className="grid gap-px bg-[var(--rule)] border border-[var(--rule)] rounded-2xl overflow-hidden" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>
           {STEPS.map((step, i) => (
-            <div key={step.code} className="bg-[var(--surface)] p-8 flex flex-col gap-3.5">
+            <div key={step.code} className="bg-[var(--surface)] p-8 xl:p-10 flex flex-col gap-3.5">
               <span className="mono text-[13px] text-[var(--ink-3)]">0{i + 1}</span>
               <h3 className="h3">{step.title}</h3>
               <p className="m-0 text-[15px] leading-relaxed text-[var(--ink-2)]">{step.body}</p>
@@ -113,7 +113,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="page pt-20 pb-6 grid gap-12 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
+      <section className="page pt-20 pb-6 grid gap-12 xl:gap-20 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
         <div className="flex flex-col gap-3">
           <span className="eyebrow">Reading the score</span>
           <h2 className="h2">Four bands. One rule: lower is safer.</h2>
@@ -136,7 +136,7 @@ export default function Home() {
           <Link to="/campaigns" className="link text-[15px] py-3">All campaigns →</Link>
         </div>
         {loading ? (
-          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}>
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>
             <CampaignCardSkeleton />
             <CampaignCardSkeleton />
             <CampaignCardSkeleton />
@@ -146,10 +146,12 @@ export default function Home() {
             <p className="lead">No campaigns are raising right now.</p>
           </div>
         ) : (
-          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}>
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>
+            {/* auto-fit stretches the cards and the tile across the row, however few campaigns are raising */}
             {featured.map((c) => (
               <CampaignCard key={c.id} camp={c} vData={verifications[c.id]} showDescription={false} />
             ))}
+            <LaunchTile />
           </div>
         )}
       </section>
@@ -185,7 +187,7 @@ function Figure({ label, value, unit, note, noteAccent }) {
 function HeroReport({ campaign, verification, loading }) {
   if (loading) {
     return (
-      <div className="card-raised p-7 flex flex-col gap-5" aria-hidden="true">
+      <div className="card-raised w-full max-w-[680px] justify-self-end p-7 flex flex-col gap-5" aria-hidden="true">
         <span className="skeleton h-4 w-40" />
         <span className="skeleton h-6 w-3/4" />
         <span className="skeleton h-16 w-32" />
@@ -197,7 +199,7 @@ function HeroReport({ campaign, verification, loading }) {
 
   if (!campaign || !verification) {
     return (
-      <article aria-label="What the risk report checks" className="card-raised p-7 flex flex-col gap-5">
+      <article aria-label="What the risk report checks" className="card-raised w-full max-w-[680px] justify-self-end p-7 flex flex-col gap-5">
         <span className="mono text-xs text-[var(--ink-3)]">RISK REPORT · FIVE SIGNALS</span>
         <ul className="m-0 p-0 list-none flex flex-col border-t border-[var(--rule-soft)]">
           {['Wallet age', 'Transaction history', 'Outflow ratio', 'Recipient spread', 'CryptoScamDB'].map((name) => (
@@ -216,7 +218,7 @@ function HeroReport({ campaign, verification, loading }) {
   const held = (campaign.raisedAmount ?? 0n) - (campaign.disbursedAmount ?? 0n);
 
   return (
-    <article aria-label={`Risk report for campaign ${campaign.id}`} className="card-raised p-7 flex flex-col gap-[22px]">
+    <article aria-label={`Risk report for campaign ${campaign.id}`} className="card-raised w-full max-w-[680px] justify-self-end p-7 flex flex-col gap-[22px]">
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <span className="mono text-xs text-[var(--ink-3)]">CAMPAIGN #{String(campaign.id).padStart(2, '0')} · RISK REPORT</span>
         <VerificationBadge badge={verification.badge} />

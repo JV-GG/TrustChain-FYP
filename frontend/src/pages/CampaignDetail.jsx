@@ -487,7 +487,7 @@ export default function CampaignDetail() {
 
       {/* Phones get the donate card straight after the title; from lg it sits in the right column.
           The auto/1fr rows keep the right column packed while the story spans both rows. */}
-      <div className="grid gap-x-8 gap-y-8 lg:gap-y-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:grid-rows-[auto_1fr]">
+      <div className="grid gap-x-8 gap-y-8 lg:gap-y-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:grid-rows-[auto_1fr]">
         <section aria-label="Donate" className="card-raised p-6 flex flex-col gap-5 min-w-0 lg:col-start-2 lg:row-start-1">
           <div className="flex flex-col gap-2.5">
             <div className="flex items-baseline gap-2 flex-wrap">
@@ -581,13 +581,16 @@ export default function CampaignDetail() {
           )}
         </section>
 
-        <div className="min-w-0 flex flex-col gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
-          <section className="flex flex-col gap-3">
-            <h2 className="h3">About this campaign</h2>
-            <p className="m-0 text-base leading-[1.7] text-[var(--ink-body)] whitespace-pre-line">{campaign.description}</p>
-          </section>
+        <div className="@container min-w-0 flex flex-col gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+          {/* Once the main column is wide enough, the story and the risk report sit side by side */}
+          <div className="grid gap-8 items-start @min-[60rem]:grid-cols-2">
+            <section className="flex flex-col gap-3">
+              <h2 className="h3">About this campaign</h2>
+              <p className="m-0 max-w-[72ch] text-base leading-[1.7] text-[var(--ink-body)] whitespace-pre-line">{campaign.description}</p>
+            </section>
 
-          <RiskReportCard verification={verification} loading={isVerifying} owner={campaign.owner} />
+            <RiskReportCard verification={verification} loading={isVerifying} owner={campaign.owner} />
+          </div>
 
           <section className="flex flex-col gap-3.5">
             <div className="flex justify-between items-baseline gap-3 flex-wrap">

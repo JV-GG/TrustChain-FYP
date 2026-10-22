@@ -197,12 +197,16 @@ export default function News() {
             </a>
           )}
 
+          {/* Two columns on wide screens keep lines readable; 1px gaps draw the dividers, and an odd last story spans both */}
           {rest.length > 0 && (
-            <section aria-label="Stories" className="card">
-              {rest.map((item, i) => (
+            <section
+              aria-label="Stories"
+              className="card overflow-hidden grid gap-px bg-[var(--rule-soft)] xl:grid-cols-2 xl:[&>*:last-child:nth-child(odd)]:col-span-2"
+            >
+              {rest.map((item) => (
                 <article
                   key={item.id}
-                  className={`grid gap-x-6 gap-y-2 px-6 py-5 items-start ${i < rest.length - 1 ? 'border-b border-[var(--rule-soft)]' : ''}`}
+                  className="grid gap-x-6 gap-y-2 px-6 py-5 items-start bg-[var(--surface)]"
                   style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}
                 >
                   <div className="flex flex-col gap-1.5 min-w-0">

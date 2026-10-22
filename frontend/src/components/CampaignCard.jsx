@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import VerificationBadge from './VerificationBadge';
-import { Progress, BlockedIcon } from './ui';
+import { Progress, BlockedIcon, PlusIcon } from './ui';
 import { ethFromWei, isGoalReached, percentFunded, shortAddr } from '../lib/format';
 
 export default function CampaignCard({ camp, vData, showDescription = true }) {
@@ -66,5 +66,21 @@ export function CampaignCardSkeleton() {
       <span className="skeleton h-10 w-full" />
       <span className="skeleton h-1.5 w-full" />
     </div>
+  );
+}
+
+/** Dashed "Launch a campaign" tile that sits in a campaign grid's next free slot. */
+export function LaunchTile() {
+  return (
+    <Link
+      to="/create"
+      className="card-link flex flex-col justify-center gap-2.5 p-[22px] min-h-[200px] rounded-[14px] border border-dashed border-[var(--rule-strong)] no-underline text-[var(--ink)]"
+    >
+      <span className="w-10 h-10 rounded-[10px] bg-[var(--chip)] flex items-center justify-center">
+        <PlusIcon size={18} />
+      </span>
+      <span className="text-[17px] font-semibold tracking-[-0.015em]">Launch a campaign</span>
+      <span className="text-sm leading-normal text-[var(--ink-2)]">One transaction creates a vault. Your wallet's score shows on the card.</span>
+    </Link>
   );
 }

@@ -220,7 +220,7 @@ export default function CreateCampaign() {
             </div>
           </form>
 
-          <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-4">
+          <aside className="flex-[1_1_400px] min-w-0 flex flex-col gap-4">
             <span className="text-[13px] font-semibold text-[var(--ink-2)]">How donors will see it</span>
             <div className="card p-[22px] flex flex-col gap-4">
               <div className="flex justify-between items-center gap-2">

@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import ConnectWalletButton from '../components/ConnectWalletButton';
 import { useCampaigns } from '../hooks/useCampaigns';
-import CampaignCard, { CampaignCardSkeleton } from '../components/CampaignCard';
+import CampaignCard, { CampaignCardSkeleton, LaunchTile } from '../components/CampaignCard';
 import VerificationBadge from '../components/VerificationBadge';
 import { EmptyState, PlusIcon, SearchIcon, StatStrip } from '../components/ui';
 import { ethFromWei, isGoalReached } from '../lib/format';
@@ -108,7 +108,7 @@ export default function Campaigns() {
             </button>
           ))}
         </div>
-        <label className="field-group flex-[0_1_360px] min-w-[240px]">
+        <label className="field-group flex-[0_1_420px] min-w-[240px]">
           <SearchIcon />
           <span className="sr-only">Search campaigns</span>
           <input type="search" placeholder="Search by title or 0x address" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -138,15 +138,16 @@ export default function Campaigns() {
         <>
           <section aria-label="Raising" className="flex flex-col gap-4">
             <h2 className="m-0 text-[15px] font-semibold text-[var(--ink-2)]">Raising · {raising.length}</h2>
-            {raising.length === 0 ? (
+            {raising.length === 0 && (
               <p className="m-0 text-sm text-[var(--ink-3)]">None in this view are raising right now.</p>
-            ) : (
-              <div className="grid gap-4" style={GRID}>
-                {raising.map((c) => (
-                  <CampaignCard key={c.id} camp={c} vData={verifications[c.id]} />
-                ))}
-              </div>
             )}
+            <div className="grid gap-4" style={GRID}>
+              {raising.map((c) => (
+                <CampaignCard key={c.id} camp={c} vData={verifications[c.id]} />
+              ))}
+              {/* Fills the next free slot so a short row offers the obvious next step */}
+              {['ALL', 'ACTIVE', 'MY_CAMPAIGNS'].includes(filter) && <LaunchTile />}
+            </div>
           </section>
 
           {closed.length > 0 && (
