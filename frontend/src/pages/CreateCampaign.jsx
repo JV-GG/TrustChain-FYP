@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import confetti from 'canvas-confetti';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import ConnectWalletButton from '../components/ConnectWalletButton';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice';
+import { verifyCampaign } from '../services/campaignVerifier';
+import VerificationBadge from '../components/VerificationBadge';
+import { EmptyState, Notice, Progress, Spinner } from '../components/ui';
+import { shortAddr } from '../lib/format';
+
+const PRECHECK_COPY = {
+  VERIFIED: 'Your wallet already passes',
+  CAUTION: 'Your wallet will launch with a caution badge',
+  UNVERIFIED: 'Your wallet will launch unverified',
+  FLAGGED: 'Your wallet is flagged',
+};
 
 export default function CreateCampaign() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { ethPrice } = useEthPrice();
   const navigate = useNavigate();
 
@@ -17,12 +28,26 @@ export default function CreateCampaign() {
   const [goalAmount, setGoalAmount] = useState('');
   const [ipfsHash, setIpfsHash] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [precheck, setPrecheck] = useState(null);
 
   const { data: hash, isPending, writeContractAsync } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Show creators the badge donors will see before they deploy
+  useEffect(() => {
+    let cancelled = false;
+    setPrecheck(null);
+    if (!address) return;
+    verifyCampaign(address)
+      .then((res) => !cancelled && setPrecheck(res))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
 
   // Auto-redirect to /campaigns after successful publication with celebratory confetti!
   useEffect(() => {
@@ -31,7 +56,7 @@ export default function CreateCampaign() {
         particleCount: 150,
         spread: 90,
         origin: { y: 0.6 },
-        colors: ['#34c759', '#0071e3', '#ff9500', '#5856d6'],
+        colors: ['#0f6b47', '#4cc38a', '#111613', '#d99a2b'],
       });
 
       const timer = setTimeout(() => {
@@ -48,12 +73,12 @@ export default function CreateCampaign() {
     if (isPending || isConfirming || isSuccess) return;
 
     if (!title || !description || !goalAmount) {
-      setErrorMsg('Please fill in all required fields.');
+      setErrorMsg('Fill in the title, description and goal.');
       return;
     }
 
     if (isNaN(Number(goalAmount)) || Number(goalAmount) <= 0) {
-      setErrorMsg('Please enter a valid positive ETH amount.');
+      setErrorMsg('Enter a goal greater than 0 ETH.');
       return;
     }
 
@@ -62,12 +87,7 @@ export default function CreateCampaign() {
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
         functionName: 'createCampaign',
-        args: [
-          title.trim(),
-          description.trim(),
-          ipfsHash.trim() || '',
-          parseEther(goalAmount),
-        ],
+        args: [title.trim(), description.trim(), ipfsHash.trim() || '', parseEther(goalAmount)],
       });
     } catch (err) {
       console.error('Failed to create campaign:', err);
@@ -75,157 +95,182 @@ export default function CreateCampaign() {
     }
   };
 
+  const busy = isPending || isConfirming || isSuccess;
   const goalUsd = formatUsd(goalAmount, ethPrice);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-6 animate-apple-fade-in">
-      <div className="space-y-2">
-        <span className="caption-label px-3 py-1 rounded-full bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)] inline-block">
-          On-Chain Deployment Wizard
-        </span>
-        <h1 className="section-title text-[var(--text-primary)]">Deploy Smart Contract Campaign</h1>
-        <p className="text-[var(--text-secondary)] text-xs sm:text-sm font-normal">
-          Register a transparent, non-reentrant crowdfunding campaign on Ethereum Sepolia testnet.
-        </p>
+    <div className="page pt-8 pb-24 flex flex-col gap-8">
+      <nav aria-label="Breadcrumb" className="text-sm text-[var(--ink-3)] flex gap-2 items-center">
+        <Link to="/campaigns" className="text-[var(--ink-2)] no-underline hover:underline py-3">Campaigns</Link>
+        <span aria-hidden="true">/</span>
+        <span className="text-[var(--ink)]">Launch</span>
+      </nav>
+
+      <div className="flex flex-col gap-2.5 max-w-[44rem]">
+        <h1 className="h1">Launch a campaign</h1>
+        <p className="lead">One transaction creates your vault on the escrow contract. Title and goal can't be edited after deploy.</p>
       </div>
 
       {!isConnected ? (
-        <div className="apple-glass p-8 sm:p-10 rounded-3xl text-center space-y-4 shadow-xl">
-          <div className="w-12 h-12 rounded-full bg-[var(--apple-blue-tint)] flex items-center justify-center text-xl mx-auto text-[var(--apple-blue)]">
-            🔒
-          </div>
-          <h2 className="headline text-[var(--text-primary)]">Wallet Not Connected</h2>
-          <p className="text-[var(--text-secondary)] text-xs max-w-md mx-auto font-normal">
-            Connect your Web3 wallet first to deploy a campaign on the TrustChain smart contract.
-          </p>
-          <div className="flex justify-center pt-2">
-            <ConnectButton />
-          </div>
-        </div>
+        <EmptyState title="Connect a wallet to launch" action={<ConnectWalletButton />}>
+          Your wallet becomes the campaign's creator, and its history sets the badge donors see.
+        </EmptyState>
       ) : (
-        <form onSubmit={handleSubmit} className="apple-glass p-6 sm:p-8 rounded-3xl space-y-5 shadow-xl">
-          {/* Campaign Title */}
-          <div className="space-y-1.5">
-            <label className="caption-label text-[var(--text-muted)]">Campaign Title *</label>
-            <input
-              type="text"
-              required
-              disabled={isPending || isConfirming || isSuccess}
-              placeholder="e.g. Clean Water & Sanitation Initiative"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full apple-inset rounded-2xl px-4 py-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] disabled:opacity-50 font-semibold"
-            />
-          </div>
+        <div className="flex flex-wrap gap-8 items-start">
+          <form onSubmit={handleSubmit} className="card flex-[999_1_560px] min-w-0 p-6 sm:p-8 flex flex-col gap-[26px]">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="title" className="field-label">Title</label>
+              <input
+                id="title"
+                type="text"
+                required
+                disabled={busy}
+                placeholder="e.g. Clean Water & Sanitation Initiative"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="field"
+              />
+            </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <label className="caption-label text-[var(--text-muted)]">Description *</label>
-            <textarea
-              required
-              rows={4}
-              disabled={isPending || isConfirming || isSuccess}
-              placeholder="Provide a detailed explanation of your campaign, goals, and fund allocation..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full apple-inset rounded-2xl px-4 py-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] disabled:opacity-50 font-normal leading-relaxed"
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="desc" className="field-label">Description</label>
+              <textarea
+                id="desc"
+                required
+                rows={6}
+                disabled={busy}
+                placeholder="What the money is for, who it reaches, and how you'll split withdrawals."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="field"
+                aria-describedby="desc-hint"
+              />
+              <span id="desc-hint" className="text-[13px] text-[var(--ink-3)]">Donors read this next to your risk score. Name specific costs.</span>
+            </div>
 
-          {/* Funding Goal */}
-          <div className="space-y-1.5">
-            <label className="caption-label text-[var(--text-muted)]">Funding Goal (ETH) *</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              required
-              disabled={isPending || isConfirming || isSuccess}
-              placeholder="Enter ETH amount (e.g. 0.5, 10, 100)"
-              value={goalAmount}
-              onChange={(e) => setGoalAmount(e.target.value)}
-              className="w-full apple-inset rounded-2xl px-4 py-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] disabled:opacity-50 font-semibold"
-            />
-            {goalAmount && Number(goalAmount) > 0 && ethPrice > 0 && (
-              <p className="text-xs text-[var(--apple-green)] font-semibold pl-1">
-                ≈ {goalUsd} USD
-                <span className="text-[var(--text-muted)] ml-2 font-normal">(1 ETH = ${ethPrice.toLocaleString()})</span>
-              </p>
-            )}
-          </div>
-
-          {/* IPFS Hash */}
-          <div className="space-y-1.5">
-            <label className="caption-label text-[var(--text-muted)] flex items-center justify-between">
-              <span>IPFS Document Hash</span>
-              <span className="text-[10px] text-[var(--text-muted)] font-normal lowercase">(optional cryptographic proof)</span>
-            </label>
-            <input
-              type="text"
-              disabled={isPending || isConfirming || isSuccess}
-              placeholder="e.g. QmXoypizjW3WknFiJn..."
-              value={ipfsHash}
-              onChange={(e) => setIpfsHash(e.target.value)}
-              className="w-full apple-inset rounded-2xl px-4 py-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] disabled:opacity-50 font-mono"
-            />
-          </div>
-
-          {/* Error Message */}
-          {errorMsg && (
-            <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-              ⚠️ {errorMsg}
-            </p>
-          )}
-
-          {/* Pending / Confirming Spinner State */}
-          {(isPending || isConfirming) && (
-            <div className="p-4 rounded-2xl bg-[var(--apple-blue-tint)] border border-[var(--apple-blue-border)] flex items-center gap-3">
-              <svg className="animate-spin h-5 w-5 text-[var(--apple-blue)]" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <div className="text-xs">
-                <p className="font-bold text-[var(--apple-blue)]">
-                  {isPending ? 'Confirm transaction in your wallet...' : 'Waiting for block confirmation...'}
-                </p>
-                {hash && <p className="text-[var(--text-muted)] font-mono mt-0.5">Tx: {hash.slice(0, 10)}...{hash.slice(-8)}</p>}
+            <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="goal" className="field-label">Funding goal</label>
+                <div className="field-group">
+                  <input
+                    id="goal"
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    disabled={busy}
+                    placeholder="0.00"
+                    value={goalAmount}
+                    onChange={(e) => setGoalAmount(e.target.value)}
+                  />
+                  <span className="text-[15px] text-[var(--ink-3)]">ETH</span>
+                </div>
+                {goalAmount && Number(goalAmount) > 0 && ethPrice > 0 && (
+                  <span className="text-[13px] text-[var(--ink-2)]">≈ {goalUsd}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="ipfs" className="field-label">
+                  IPFS document hash <span className="font-normal text-[var(--ink-3)]">optional</span>
+                </label>
+                <input
+                  id="ipfs"
+                  type="text"
+                  disabled={busy}
+                  placeholder="Qm…"
+                  value={ipfsHash}
+                  onChange={(e) => setIpfsHash(e.target.value)}
+                  className="field mono text-sm"
+                />
               </div>
             </div>
-          )}
 
-          {/* Success State */}
-          {isSuccess && hash && (
-            <div className="p-4 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] space-y-1 animate-apple-fade-in">
-              <p className="text-xs font-bold text-[var(--apple-green)]">✓ Campaign Registered On-Chain!</p>
-              <p className="text-xs text-[var(--text-secondary)] font-normal">
-                Redirecting to campaigns matrix in 2.5 seconds...
-              </p>
-              <p className="text-xs text-[var(--apple-blue)] pt-1">
-                TxHash:{' '}
-                <a
-                  href={`https://sepolia.etherscan.io/tx/${hash}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline font-mono font-semibold"
-                >
-                  {hash.slice(0, 12)}...{hash.slice(-8)}
+            {errorMsg && <Notice tone="error">{errorMsg}</Notice>}
+
+            {(isPending || isConfirming) && (
+              <Notice tone="pending" title={isPending ? 'Confirm the transaction in your wallet…' : 'Waiting for the block…'}>
+                {hash && <span className="mono">Tx {shortAddr(hash, 10, 8)}</span>}
+              </Notice>
+            )}
+
+            {isSuccess && hash && (
+              <Notice tone="success" title="Campaign is live on-chain">
+                Taking you to campaigns ·{' '}
+                <a href={`https://sepolia.etherscan.io/tx/${hash}`} target="_blank" rel="noreferrer" className="link mono font-normal">
+                  {shortAddr(hash, 10, 8)}
                 </a>
-              </p>
-            </div>
-          )}
+              </Notice>
+            )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isPending || isConfirming || isSuccess}
-            className="w-full py-3.5 rounded-full bg-[var(--apple-green)] hover:bg-[var(--apple-green-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer apple-press"
-          >
-            {isPending || isConfirming
-              ? 'Publishing On-Chain...'
-              : isSuccess
-              ? 'Campaign Registered! Redirecting...'
-              : 'Publish Campaign On-Chain'}
-          </button>
-        </form>
+            <div className="flex flex-wrap gap-3 items-center justify-between pt-[22px] border-t border-[var(--rule-soft)]">
+              <span className="text-[13px] text-[var(--ink-2)]">
+                Calls <code className="mono text-xs bg-[var(--surface-2)] px-1.5 py-[3px] rounded">createCampaign()</code> · gas paid in Sepolia ETH
+              </span>
+              <button type="submit" disabled={busy} className="btn btn-primary btn-xl">
+                {isPending || isConfirming ? (
+                  <>
+                    <Spinner />
+                    Deploying…
+                  </>
+                ) : isSuccess ? (
+                  'Deployed'
+                ) : (
+                  'Deploy campaign'
+                )}
+              </button>
+            </div>
+          </form>
+
+          <aside className="flex-[1_1_340px] min-w-0 flex flex-col gap-4">
+            <span className="text-[13px] font-semibold text-[var(--ink-2)]">How donors will see it</span>
+            <div className="card p-[22px] flex flex-col gap-4">
+              <div className="flex justify-between items-center gap-2">
+                <span className="mono text-xs text-[var(--ink-3)]">New · {shortAddr(address)}</span>
+                {precheck ? (
+                  <VerificationBadge badge={precheck.badge} score={precheck.score} />
+                ) : (
+                  <span className="skeleton h-[22px] w-24 rounded-full" />
+                )}
+              </div>
+              <span className="text-lg font-semibold tracking-[-0.02em] leading-snug min-h-12 break-words">
+                {title.trim() || 'Your campaign title'}
+              </span>
+              <div className="flex flex-col gap-2">
+                <Progress percent={0} />
+                <span className="text-sm">
+                  <strong className="font-semibold">0.0000 ETH</strong>{' '}
+                  <span className="text-[var(--ink-3)]">of {goalAmount.trim() || '0.00'} ETH</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="card p-[22px] flex flex-col gap-3">
+              {precheck ? (
+                <>
+                  <h2 className="m-0 text-base font-semibold">{PRECHECK_COPY[precheck.badge] || PRECHECK_COPY.UNVERIFIED}</h2>
+                  <p className="m-0 text-sm leading-relaxed text-[var(--ink-2)]">
+                    Risk {precheck.score} of 100. The badge follows your wallet history, so it can move after launch.
+                    {precheck.badge === 'FLAGGED' && ' Flagged campaigns cannot take donations.'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="skeleton h-5 w-2/3" />
+                  <span className="skeleton h-10 w-full" />
+                </>
+              )}
+              <Link to={`/check?address=${address}`} className="link text-sm py-2">See your signals →</Link>
+            </div>
+
+            <ol className="m-0 py-[22px] pr-[22px] pl-11 bg-[var(--chip)] rounded-[14px] flex flex-col gap-3 text-sm leading-normal text-[var(--ink-body)]">
+              <li>Donations land in the contract's escrow, never your wallet directly.</li>
+              <li>
+                Withdraw any amount up to the vault balance with <span className="mono text-[13px]">disburseFunds</span>.
+              </li>
+              <li>Every deposit and withdrawal is public on the audit page.</li>
+              <li>You can close the campaign at any time. It can't be reopened.</li>
+            </ol>
+          </aside>
+        </div>
       )}
     </div>
   );

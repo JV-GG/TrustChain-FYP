@@ -1,204 +1,255 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useReadContract, usePublicClient } from 'wagmi';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
-import { verifyCampaign } from '../services/campaignVerifier';
+import { formatEther } from 'viem';
+import { CONTRACT_ADDRESS } from '../config/contract';
+import { useCampaigns } from '../hooks/useCampaigns';
+import CampaignCard, { CampaignCardSkeleton } from '../components/CampaignCard';
+import VerificationBadge from '../components/VerificationBadge';
+import { ArrowIcon, AlertIcon, CheckIcon, RiskScale } from '../components/ui';
+import { signalPoints } from '../lib/risk';
+import { isGoalReached, shortAddr } from '../lib/format';
+
+const STEPS = [
+  {
+    title: "The creator's wallet is scored",
+    body: 'Wallet age, transaction count, outflow ratio, recipient spread and a CryptoScamDB lookup add up to a score from 0 to 100.',
+    code: 'analyseWallet(owner)',
+  },
+  {
+    title: 'Your ETH is locked in escrow',
+    body: 'Donations go to the contract, not the creator. A reentrancy guard stops the vault from being drained mid-call.',
+    code: 'donate(campaignId)',
+  },
+  {
+    title: 'Every payout is on the record',
+    body: 'Creators withdraw in steps. Each disbursement emits an event anyone can trace on Etherscan or the audit page.',
+    code: 'disburseFunds(campaignId, amount)',
+  },
+];
+
+const BANDS = [
+  { range: '0–25', badge: 'VERIFIED', text: 'Established history, healthy retention, no blacklist hits.' },
+  { range: '26–50', badge: 'CAUTION', text: 'Open for donations. Read the signals before you give.' },
+  { range: '51–75', badge: 'UNVERIFIED', text: 'Too little history to judge. Treat as unknown.' },
+  { range: '76–100', badge: 'FLAGGED', text: 'Blacklisted or draining funds. Donations are blocked.' },
+];
 
 export default function Home() {
-  const [verifiedCount, setVerifiedCount] = useState(0);
+  const { campaigns, verifications, loading, count } = useCampaigns();
 
-  // Read total campaign count on-chain
-  const { data: countData } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'getCampaignCount',
-  });
+  const stats = useMemo(() => {
+    const verified = Object.values(verifications).filter((v) => v?.badge === 'VERIFIED').length;
+    const heldWei = campaigns.reduce((acc, c) => {
+      const raised = c.raisedAmount ?? 0n;
+      const out = c.disbursedAmount ?? 0n;
+      return acc + (raised > out ? raised - out : 0n);
+    }, 0n);
+    return { verified, held: Number(formatEther(heldWei)) };
+  }, [campaigns, verifications]);
 
-  const totalCampaigns = countData ? Number(countData) : 0;
-  const publicClient = usePublicClient();
+  const open = campaigns.filter((c) => c.isActive && !isGoalReached(c.raisedAmount, c.goalAmount));
+  const scoreOf = (c) => verifications[c.id]?.score ?? 101;
+  const featured = [...open].sort((a, b) => scoreOf(a) - scoreOf(b)).slice(0, 3);
 
-  useEffect(() => {
-    async function calculateVerifiedCampaigns() {
-      if (!totalCampaigns || !publicClient) return;
-      let count = 0;
-      for (let i = 1; i <= totalCampaigns; i++) {
-        try {
-          const campaign = await publicClient.readContract({
-            address: CONTRACT_ADDRESS,
-            abi: CONTRACT_ABI,
-            functionName: 'getCampaign',
-            args: [BigInt(i)],
-          });
-          if (campaign?.owner) {
-            const verification = await verifyCampaign(campaign.owner);
-            if (verification?.badge === 'VERIFIED') {
-              count++;
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to verify campaign #${i} for home stats:`, err);
-        }
-      }
-      setVerifiedCount(count);
-    }
-
-    calculateVerifiedCampaigns();
-  }, [totalCampaigns, publicClient]);
+  // Hero shows a real report: the lowest-risk open campaign that has finished scoring
+  const example = featured.find((c) => verifications[c.id]?.report);
+  const exampleV = example ? verifications[example.id] : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-20 sm:space-y-24 relative overflow-hidden">
-      
-      {/* ── Apple Marquee Hero ── */}
-      <div className="max-w-4xl mx-auto text-center space-y-6 pt-4 sm:pt-8">
-        
-        {/* Status Capsule */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-[var(--apple-green)] text-[11px] font-semibold tracking-wide uppercase shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-[var(--apple-green)] animate-pulse" />
-          <span>Sepolia Contract Verified & Audited</span>
-        </div>
-
-        {/* Display Heading — Apple Optical Weight */}
-        <h1 className="display-title text-[var(--text-primary)]">
-          Autonomous Risk Verification & Escrow Crowdfunding
-        </h1>
-
-        {/* Lead Paragraph */}
-        <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed font-normal max-w-2xl mx-auto">
-          TrustChain pairs non-reentrant smart contract vault escrow with on-chain risk scoring, drain ratio analysis, and live cryptographic event logs.
-        </p>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <Link
-            to="/campaigns"
-            className="px-6 py-3 rounded-full bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer apple-press"
-          >
-            <span>Browse Verified Campaigns</span>
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14m-7-7 7 7-7 7" />
-            </svg>
-          </Link>
-          <Link
-            to="/check"
-            className="px-6 py-3 rounded-full apple-glass font-semibold text-xs text-[var(--text-primary)] hover:border-[var(--apple-blue-border)] transition-all cursor-pointer apple-press"
-          >
-            Run Wallet Risk Check
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Apple Health / System Style Metrics Grid ── */}
-      <div className="apple-glass p-6 sm:p-8 rounded-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-left">
-        
-        {/* Metric 1: Registered Campaigns */}
-        <div className="space-y-1.5 p-5 rounded-2xl apple-inset">
-          <span className="caption-label text-[var(--text-muted)]">Registered Campaigns</span>
-          <p className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">{totalCampaigns}</p>
-          <span className="text-[11px] text-[var(--apple-green)] font-semibold flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--apple-green)] animate-pulse" />
-            Live On-Chain Vaults
-          </span>
-        </div>
-
-        {/* Metric 2: Verified Campaigns */}
-        <div className="space-y-1.5 p-5 rounded-2xl apple-inset">
-          <span className="caption-label text-[var(--text-muted)]">Passed Risk Audit</span>
-          <p className="text-3xl sm:text-4xl font-extrabold text-[var(--apple-green)] tracking-tight">{verifiedCount}</p>
-          <span className="text-[11px] text-[var(--text-muted)] font-medium">
-            Risk Score ≤ 25 / 100
-          </span>
-        </div>
-
-        {/* Metric 3: Smart Contract */}
-        <div className="space-y-1.5 p-5 rounded-2xl apple-inset">
-          <span className="caption-label text-[var(--text-muted)]">Smart Contract</span>
-          <p className="text-xs font-mono font-bold text-[var(--text-primary)] break-all pt-1">
-            {CONTRACT_ADDRESS.slice(0, 12)}...{CONTRACT_ADDRESS.slice(-8)}
+    <>
+      <section className="page grid items-center gap-14 pt-16 pb-16 sm:pt-[88px] sm:pb-[72px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))' }}>
+        <div className="flex flex-col gap-6">
+          <span className="eyebrow">Escrow crowdfunding · Ethereum Sepolia</span>
+          <h1 className="display">Give to campaigns you can check first.</h1>
+          <p className="lead text-lg max-w-[34rem]">
+            TrustChain scores every creator's wallet before you donate, holds your ETH in a non-reentrant escrow contract, and records every payout as a public event.
           </p>
-          <a
-            href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[11px] text-[var(--apple-blue)] font-semibold hover:underline block pt-0.5"
-          >
-            View on Etherscan →
-          </a>
-        </div>
-
-        {/* Metric 4: Escrow Protection */}
-        <div className="space-y-1.5 p-5 rounded-2xl apple-inset">
-          <span className="caption-label text-[var(--text-muted)]">Escrow Protection</span>
-          <p className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">100%</p>
-          <span className="text-[11px] text-[var(--apple-green)] font-semibold">
-            Non-Reentrant Vault Guard
-          </span>
-        </div>
-      </div>
-
-      {/* ── Apple-Style 3-Tier Security Protocol ── */}
-      <div className="space-y-8">
-        <div className="text-center space-y-2">
-          <span className="caption-label px-3 py-1 rounded-full apple-inset text-[var(--text-secondary)] border border-[var(--border-color)]">
-            Security Architecture
-          </span>
-          <h2 className="section-title text-[var(--text-primary)]">
-            Three-Tier Security Protocol
-          </h2>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="apple-glass p-7 rounded-3xl space-y-4 hover-lift hover:border-[var(--apple-blue-border)] group">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--apple-blue-tint)] border border-[var(--apple-blue-border)] flex items-center justify-center text-[var(--apple-blue)] font-bold text-sm">
-              01
-            </div>
-            <h3 className="headline text-[var(--text-primary)] group-hover:text-[var(--apple-blue)] transition-colors">
-              Risk Engine Analysis
-            </h3>
-            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-normal">
-              Evaluates target creator wallets across 5 signals: wallet age, transaction velocity, drain ratios, ETH balance, and CryptoScamDB blacklist databases.
-            </p>
-            <Link to="/check" className="text-xs text-[var(--apple-blue)] hover:underline font-semibold inline-flex items-center gap-1 pt-1 apple-press">
-              <span>Run Risk Assessment</span>
-              <span>→</span>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Link to="/campaigns" className="btn btn-primary btn-lg">
+              Browse campaigns
+              <ArrowIcon />
             </Link>
-          </div>
-
-          {/* Card 2 */}
-          <div className="apple-glass p-7 rounded-3xl space-y-4 hover-lift hover:border-[var(--apple-green-border)] group">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] flex items-center justify-center text-[var(--apple-green)] font-bold text-sm">
-              02
-            </div>
-            <h3 className="headline text-[var(--text-primary)] group-hover:text-[var(--apple-green)] transition-colors">
-              Transparent Discovery
-            </h3>
-            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-normal">
-              Discover verified campaigns with automated risk badges (VERIFIED, CAUTION, HIGH RISK), IPFS metadata hashes, and funding progress.
-            </p>
-            <Link to="/campaigns" className="text-xs text-[var(--apple-green)] hover:underline font-semibold inline-flex items-center gap-1 pt-1 apple-press">
-              <span>Explore Matrix</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          {/* Card 3 */}
-          <div className="apple-glass p-7 rounded-3xl space-y-4 hover-lift hover:border-[var(--apple-amber-border)] group">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--apple-amber-tint)] border border-[var(--apple-amber-border)] flex items-center justify-center text-[var(--apple-amber)] font-bold text-sm">
-              03
-            </div>
-            <h3 className="headline text-[var(--text-primary)] group-hover:text-[var(--apple-amber)] transition-colors">
-              Non-Reentrant Vault Escrow
-            </h3>
-            <p className="text-[var(--text-secondary)] text-xs leading-relaxed font-normal">
-              Donations are locked inside smart contract escrow. Campaign owners must disburse funds transparently with full Etherscan event logging.
-            </p>
-            <Link to="/create" className="text-xs text-[var(--apple-amber)] hover:underline font-semibold inline-flex items-center gap-1 pt-1 apple-press">
-              <span>Deploy Campaign</span>
-              <span>→</span>
+            <Link to="/check" className="btn btn-secondary btn-lg">
+              Check a wallet
             </Link>
           </div>
         </div>
-      </div>
+
+        <HeroReport campaign={example} verification={exampleV} loading={loading || featured.some((c) => !verifications[c.id])} />
+      </section>
+
+      <section aria-label="Platform figures" className="border-y border-[var(--rule)] bg-[var(--surface)]">
+        <div className="page">
+          {/* 1px gaps over a rule-coloured ground draw the dividers, so they stay right when cells stack */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--rule-soft)] -mx-4 sm:-mx-6">
+            <Figure label="Registered campaigns" value={count} note="Read live from the contract" noteAccent />
+            <Figure label="Passed risk audit" value={stats.verified} note="Score 25 or below" />
+            <Figure label="Held in escrow" value={stats.held.toFixed(2)} unit="ETH" note="Across all vaults" />
+            <div className="bg-[var(--surface)] py-7 px-4 sm:px-6 flex flex-col gap-1.5">
+              <span className="text-[13px] text-[var(--ink-3)]">Escrow contract</span>
+              <span className="mono text-[17px] font-medium pt-2.5 pb-1.5">{shortAddr(CONTRACT_ADDRESS, 8, 5)}</span>
+              <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer" className="link text-[13px]">
+                Verified on Etherscan ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="page pt-24 pb-6 flex flex-col gap-10">
+        <div className="flex flex-col gap-3 max-w-[40rem]">
+          <span className="eyebrow">How a donation moves</span>
+          <h2 className="h2">Three checks between your wallet and theirs.</h2>
+        </div>
+        <div className="grid gap-px bg-[var(--rule)] border border-[var(--rule)] rounded-2xl overflow-hidden" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }}>
+          {STEPS.map((step, i) => (
+            <div key={step.code} className="bg-[var(--surface)] p-8 flex flex-col gap-3.5">
+              <span className="mono text-[13px] text-[var(--ink-3)]">0{i + 1}</span>
+              <h3 className="h3">{step.title}</h3>
+              <p className="m-0 text-[15px] leading-relaxed text-[var(--ink-2)]">{step.body}</p>
+              <code className="mono text-xs text-[var(--ink-2)] bg-[var(--surface-2)] px-2.5 py-2 rounded-md self-start">{step.code}</code>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="page pt-20 pb-6 grid gap-12 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
+        <div className="flex flex-col gap-3">
+          <span className="eyebrow">Reading the score</span>
+          <h2 className="h2">Four bands. One rule: lower is safer.</h2>
+          <p className="lead">The badge on every campaign comes straight from its creator's score. Flagged campaigns can't take donations.</p>
+        </div>
+        <div className="flex flex-col border-t border-[var(--rule)]">
+          {BANDS.map((b) => (
+            <div key={b.range} className="grid gap-x-4 gap-y-2 items-baseline py-[18px] border-b border-[var(--rule)] grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[72px_112px_minmax(0,1fr)]">
+              <span className="mono text-sm text-[var(--ink-2)]">{b.range}</span>
+              <span className="justify-self-start"><VerificationBadge badge={b.badge} /></span>
+              <span className="col-span-2 sm:col-span-1 text-[15px] leading-normal">{b.text}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="page pt-24 pb-6 flex flex-col gap-7">
+        <div className="flex justify-between items-end gap-4 flex-wrap">
+          <h2 className="h2">Raising now</h2>
+          <Link to="/campaigns" className="link text-[15px] py-3">All campaigns →</Link>
+        </div>
+        {loading ? (
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}>
+            <CampaignCardSkeleton />
+            <CampaignCardSkeleton />
+            <CampaignCardSkeleton />
+          </div>
+        ) : featured.length === 0 ? (
+          <div className="card px-6 py-10 text-center">
+            <p className="lead">No campaigns are raising right now.</p>
+          </div>
+        ) : (
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))' }}>
+            {featured.map((c) => (
+              <CampaignCard key={c.id} camp={c} vData={verifications[c.id]} showDescription={false} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="page py-24">
+        <div className="rounded-[20px] p-8 sm:p-12 flex flex-wrap justify-between items-center gap-8 bg-[var(--invert-bg)] text-[var(--invert-ink)]">
+          <div className="flex flex-col gap-3 max-w-[36rem]">
+            <h2 className="m-0 text-[32px] leading-tight tracking-[-0.03em] font-bold">Raising funds? Your wallet history is your pitch.</h2>
+            <p className="m-0 text-base leading-relaxed text-[var(--invert-ink-2)]">
+              Deploy a campaign in one transaction. Donors see your risk score before they see your goal.
+            </p>
+          </div>
+          <Link to="/create" className="btn btn-invert btn-lg">Launch a campaign</Link>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function Figure({ label, value, unit, note, noteAccent }) {
+  return (
+    <div className="bg-[var(--surface)] py-7 px-4 sm:px-6 flex flex-col gap-1.5">
+      <span className="text-[13px] text-[var(--ink-3)]">{label}</span>
+      <span className="text-4xl font-bold tracking-[-0.03em]">
+        {value}
+        {unit && <span className="text-xl text-[var(--ink-2)] ml-1.5">{unit}</span>}
+      </span>
+      <span className={`text-[13px] ${noteAccent ? 'text-[var(--accent)] font-medium' : 'text-[var(--ink-3)]'}`}>{note}</span>
     </div>
+  );
+}
+
+function HeroReport({ campaign, verification, loading }) {
+  if (loading) {
+    return (
+      <div className="card-raised p-7 flex flex-col gap-5" aria-hidden="true">
+        <span className="skeleton h-4 w-40" />
+        <span className="skeleton h-6 w-3/4" />
+        <span className="skeleton h-16 w-32" />
+        <span className="skeleton h-2 w-full" />
+        <span className="skeleton h-40 w-full" />
+      </div>
+    );
+  }
+
+  if (!campaign || !verification) {
+    return (
+      <article aria-label="What the risk report checks" className="card-raised p-7 flex flex-col gap-5">
+        <span className="mono text-xs text-[var(--ink-3)]">RISK REPORT · FIVE SIGNALS</span>
+        <ul className="m-0 p-0 list-none flex flex-col border-t border-[var(--rule-soft)]">
+          {['Wallet age', 'Transaction history', 'Outflow ratio', 'Recipient spread', 'CryptoScamDB'].map((name) => (
+            <li key={name} className="flex items-center gap-2.5 py-3 border-b border-[var(--rule-soft)] text-sm">
+              <CheckIcon className="text-[var(--accent)]" />
+              {name}
+            </li>
+          ))}
+        </ul>
+        <RiskScale score={0} />
+      </article>
+    );
+  }
+
+  const report = verification.report;
+  const held = (campaign.raisedAmount ?? 0n) - (campaign.disbursedAmount ?? 0n);
+
+  return (
+    <article aria-label={`Risk report for campaign ${campaign.id}`} className="card-raised p-7 flex flex-col gap-[22px]">
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <span className="mono text-xs text-[var(--ink-3)]">CAMPAIGN #{String(campaign.id).padStart(2, '0')} · RISK REPORT</span>
+        <VerificationBadge badge={verification.badge} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xl font-semibold tracking-[-0.02em]">{campaign.title}</span>
+        <span className="mono text-[13px] text-[var(--ink-3)]">Creator {shortAddr(campaign.owner)}</span>
+      </div>
+      <div className="flex items-end gap-3">
+        <span className="text-[64px] leading-[0.9] font-bold tracking-[-0.04em]">{verification.score}</span>
+        <span className="text-sm text-[var(--ink-2)] pb-1.5">/ 100 risk score<br />lower is safer</span>
+      </div>
+      <RiskScale score={verification.score} />
+      <ul className="m-0 p-0 list-none flex flex-col border-t border-[var(--rule-soft)]">
+        {report.signals.map((s) => {
+          const pts = signalPoints(s);
+          return (
+            <li key={s.name} className="flex justify-between gap-4 py-[11px] border-b border-[var(--rule-soft)] text-sm">
+              <span className="flex items-center gap-2.5">
+                {s.isWarning ? <AlertIcon className="text-[var(--amber)]" /> : <CheckIcon className="text-[var(--accent)]" />}
+                {s.name}
+              </span>
+              <span className="mono text-[13px] text-[var(--ink-2)]">{pts > 0 ? `+${pts}` : '0'}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex justify-between items-center gap-3 flex-wrap text-sm">
+        <span className="text-[var(--ink-2)]">
+          <strong className="text-[var(--ink)] font-semibold">{Number(formatEther(held > 0n ? held : 0n)).toFixed(4)} ETH</strong> held in escrow
+        </span>
+        <Link to={`/audit/campaign/${campaign.id}`} className="link">Open audit trail →</Link>
+      </div>
+    </article>
   );
 }

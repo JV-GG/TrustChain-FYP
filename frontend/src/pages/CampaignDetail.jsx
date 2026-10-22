@@ -2,17 +2,31 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice';
 import { verifyCampaign } from '../services/campaignVerifier';
 import VerificationBadge from '../components/VerificationBadge';
+import { AlertIcon, BlockedIcon, CheckIcon, Notice, Progress, Spinner } from '../components/ui';
+import { signalPoints } from '../lib/risk';
+import { formatDate, isGoalReached as goalReached, percentFunded, plural, shortAddr, timeAgo } from '../lib/format';
+
+const PRESETS = ['0.001', '0.01', '0.05', '0.1'];
+
+const EVENT_DOT = {
+  Donation: 'var(--accent)',
+  Disbursement: 'var(--ink)',
+  'Campaign Deactivated': 'var(--red)',
+  'Campaign Created': 'var(--ink-3)',
+};
 
 export default function CampaignDetail() {
   const { id } = useParams();
   const campaignId = BigInt(id || 1);
   const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { ethPrice } = useEthPrice();
   const navigate = useNavigate();
 
@@ -75,7 +89,11 @@ export default function CampaignDetail() {
   useEffect(() => {
     if (donateTxHash && address) {
       setOptimisticTxs((prev) => {
-        if (prev.some((t) => t.hash.toLowerCase() === donateTxHash.toLowerCase())) return prev;
+        if (prev.some((t) => t.hash.toLowerCase() === donateTxHash.toLowerCase())) {
+          return prev.map((t) =>
+            t.hash.toLowerCase() === donateTxHash.toLowerCase() ? { ...t, isPending: !isDonateSuccess } : t
+          );
+        }
         return [
           {
             hash: donateTxHash,
@@ -102,13 +120,6 @@ export default function CampaignDetail() {
   const { isLoading: isDisburseConfirming, isSuccess: isDisburseSuccess } = useWaitForTransactionReceipt({
     hash: disburseTxHash,
   });
-
-  useEffect(() => {
-    if (isDisburseSuccess) {
-      refetch();
-      fetchTransactions();
-    }
-  }, [isDisburseSuccess, refetch, fetchTransactions]);
 
   // 5. Fetch Etherscan transactions for this campaign's contract interactions
   const fetchTransactions = useCallback(async () => {
@@ -186,16 +197,20 @@ export default function CampaignDetail() {
             valEth = Number(tx.value || 0) / 1e18;
           }
 
-          const txDate = tx.timeStamp
-            ? new Date(Number(tx.timeStamp) * 1000)
-            : null;
-
-          let type = 'Contract Call';
           const fnName = (tx.functionName || '').toLowerCase();
+          let type = 'Contract Call';
           if (fnName.includes('donate')) {
             type = 'Donation';
           } else if (fnName.includes('disburse')) {
             type = 'Disbursement';
+            // Disbursements carry no msg.value; read the amount from calldata
+            if (tx.input && tx.input.length >= 138) {
+              try {
+                valEth = Number(formatEther(BigInt('0x' + tx.input.slice(74, 138))));
+              } catch {
+                // Ignore parse error
+              }
+            }
           } else if (fnName.includes('deactivate')) {
             type = 'Campaign Deactivated';
           } else if (fnName.includes('create')) {
@@ -208,7 +223,7 @@ export default function CampaignDetail() {
             to: tx.to,
             value: valEth,
             type,
-            date: txDate,
+            date: tx.timeStamp ? new Date(Number(tx.timeStamp) * 1000) : null,
             functionName: tx.functionName || '',
             isError: tx.isError,
             isPending: false,
@@ -223,6 +238,13 @@ export default function CampaignDetail() {
       setTxLoading(false);
     }
   }, [campaign?.owner, id]);
+
+  useEffect(() => {
+    if (isDisburseSuccess) {
+      refetch();
+      fetchTransactions();
+    }
+  }, [isDisburseSuccess, refetch, fetchTransactions]);
 
   // Real-time polling (every 6 seconds) + initial fetch
   useEffect(() => {
@@ -245,6 +267,7 @@ export default function CampaignDetail() {
     onLogs(logs) {
       refetch();
       logs.forEach((log) => {
+        if (log.args?.campaignId !== undefined && log.args.campaignId !== campaignId) return;
         const txHash = log.transactionHash;
         const donor = log.args?.donor;
         const amount = log.args?.amount ? Number(formatEther(log.args.amount)) : 0;
@@ -277,7 +300,7 @@ export default function CampaignDetail() {
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#34c759', '#0071e3', '#ff9500', '#5856d6'],
+        colors: ['#0f6b47', '#4cc38a', '#111613', '#d99a2b'],
       });
 
       const t1 = setTimeout(() => {
@@ -315,17 +338,20 @@ export default function CampaignDetail() {
 
   useEffect(() => {
     if (isDeactivateSuccess) {
-      setTimeout(() => {
-        navigate('/campaigns');
-      }, 2000);
+      const t = setTimeout(() => navigate('/campaigns'), 2000);
+      return () => clearTimeout(t);
     }
   }, [isDeactivateSuccess, navigate]);
 
   const handleDonate = async (e) => {
     e.preventDefault();
     setDonationError('');
+    if (!address) {
+      openConnectModal?.();
+      return;
+    }
     if (!donationEth || isNaN(Number(donationEth)) || Number(donationEth) <= 0) {
-      setDonationError('Please enter a valid ETH donation amount.');
+      setDonationError('Enter an amount greater than 0.');
       return;
     }
 
@@ -349,7 +375,7 @@ export default function CampaignDetail() {
     e.preventDefault();
     setDisburseError('');
     if (!disburseAmountEth || isNaN(Number(disburseAmountEth)) || Number(disburseAmountEth) <= 0) {
-      setDisburseError('Please enter a valid ETH disbursement amount.');
+      setDisburseError('Enter an amount greater than 0.');
       return;
     }
 
@@ -369,7 +395,7 @@ export default function CampaignDetail() {
 
   const handleDeactivate = async () => {
     setDeactivateError('');
-    const confirmed = window.confirm('Are you sure? This will permanently deactivate this campaign');
+    const confirmed = window.confirm('Close this campaign for good? It will stop taking donations and cannot be reopened.');
     if (!confirmed) return;
 
     try {
@@ -387,13 +413,12 @@ export default function CampaignDetail() {
 
   if (isLoading || !campaign) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-[var(--border-color)] rounded-full w-1/3"></div>
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-96 bg-[var(--border-color)] rounded-3xl"></div>
-            <div className="h-96 bg-[var(--border-color)] rounded-3xl"></div>
-          </div>
+      <div className="page pt-8 pb-24 flex flex-col gap-8" aria-busy="true">
+        <span className="skeleton h-4 w-32" />
+        <span className="skeleton h-12 w-2/3" />
+        <div className="flex flex-wrap gap-8">
+          <span className="skeleton h-96 flex-[999_1_560px]" />
+          <span className="skeleton h-96 flex-[1_1_340px]" />
         </div>
       </div>
     );
@@ -403,10 +428,8 @@ export default function CampaignDetail() {
 
   const raised = formatEther(campaign.raisedAmount || 0n);
   const goal = formatEther(campaign.goalAmount || 0n);
-  const goalNum = Number(campaign.goalAmount || 1n);
-  const raisedNum = Number(campaign.raisedAmount || 0n);
-  const percent = goalNum > 0 ? Math.min(100, Math.round((raisedNum / goalNum) * 100)) : 0;
-  const isGoalReached = raisedNum >= goalNum && goalNum > 0;
+  const percent = percentFunded(campaign.raisedAmount, campaign.goalAmount);
+  const isGoalReached = goalReached(campaign.raisedAmount, campaign.goalAmount);
 
   const raisedWei = campaign.raisedAmount || 0n;
   const disbursedWei = campaign.disbursedAmount || 0n;
@@ -416,550 +439,362 @@ export default function CampaignDetail() {
 
   const donationUsd = formatUsd(donationEth, ethPrice);
   const badgeType = verification?.badge || 'UNVERIFIED';
+  const donateBusy = isDonatePending || isDonateConfirming;
+  const donationCount = displayTransactions.filter((t) => t.type === 'Donation').length;
+  const createdAt = campaign.createdAt ? new Date(Number(campaign.createdAt) * 1000) : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 animate-apple-fade-in">
-      
-      {/* ── Breadcrumb Navigation ── */}
-      <Link 
-        to="/campaigns" 
-        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold transition-colors inline-flex items-center gap-1.5 apple-press"
-      >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m15 18-6-6 6-6"/>
-        </svg>
-        <span>Back to Campaigns Matrix</span>
-      </Link>
+    <div className="page pt-8 pb-24 flex flex-col gap-8">
+      <nav aria-label="Breadcrumb" className="text-sm text-[var(--ink-3)] flex gap-2 items-center">
+        <Link to="/campaigns" className="text-[var(--ink-2)] no-underline hover:underline py-3">Campaigns</Link>
+        <span aria-hidden="true">/</span>
+        <span className="text-[var(--ink)]">#{String(id).padStart(2, '0')}</span>
+      </nav>
 
-      {/* ── TOP VERIFICATION ALERT BANNERS ── */}
+      <div className="flex flex-col gap-4 max-w-[52rem]">
+        <div className="flex flex-wrap gap-2.5 items-center">
+          {isVerifying ? (
+            <span className="skeleton h-[26px] w-36 rounded-full" aria-label="Checking creator wallet" />
+          ) : (
+            verification && <VerificationBadge badge={verification.badge} score={verification.score} reason={verification.reason} size="lg" />
+          )}
+          <span className="badge tone-outline text-[13px] px-3 py-[5px] font-medium">
+            {!campaign.isActive ? 'Closed' : isGoalReached ? 'Goal reached' : 'Raising'}
+          </span>
+        </div>
+        <h1 className="h1">{campaign.title}</h1>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ink-2)]">
+          <span>
+            Creator{' '}
+            <a href={`https://sepolia.etherscan.io/address/${campaign.owner}`} target="_blank" rel="noreferrer" className="mono text-[var(--ink)] no-underline hover:underline">
+              {shortAddr(campaign.owner, 8, 6)}
+            </a>
+          </span>
+          {campaign.ipfsHash && (
+            <span>
+              IPFS <span className="mono text-[var(--ink)]" title={campaign.ipfsHash}>{shortAddr(campaign.ipfsHash, 6, 5)}</span>
+            </span>
+          )}
+          {createdAt && <span>Created {formatDate(createdAt)}</span>}
+        </div>
+      </div>
+
       {!isVerifying && badgeType === 'FLAGGED' && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] text-[var(--apple-red)] text-xs font-semibold flex items-center gap-3.5 shadow-sm">
-          <div className="w-8 h-8 rounded-full bg-[var(--apple-red)] text-white flex items-center justify-center flex-shrink-0">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div>
-            <p className="font-bold text-[var(--apple-red)] text-sm">
-              Flagged Campaign Wallet Alert
-            </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-normal">
-              This campaign owner's wallet has triggered security risk alerts. Exercise due diligence before depositing funds.
-            </p>
-          </div>
-        </div>
+        <Notice tone="error" title="This creator's wallet is flagged">
+          {verification?.reason}. Donations to this campaign are blocked.
+        </Notice>
       )}
 
-      {!isVerifying && badgeType === 'VERIFIED' && (
-        <div className="p-4 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-[var(--apple-green)] text-xs font-semibold flex items-center gap-3.5 shadow-sm">
-          <div className="w-7 h-7 rounded-full bg-[var(--apple-green)] text-white flex items-center justify-center flex-shrink-0">
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 12 2 2 4-4"/>
-            </svg>
-          </div>
-          <div>
-            <p className="font-bold text-[var(--apple-green)]">Verified On-Chain Campaign</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-normal">
-              This campaign creator wallet has passed automated on-chain risk verification.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── TWO-COLUMN APPLE LAYOUT ── */}
-      <div className="grid lg:grid-cols-3 gap-6">
-
-        {/* LEFT COLUMN — Campaign Info + Donation + Owner Tools (2/3 width) */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* Main Campaign Info Card */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]">
-                    Campaign #{id}
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--text-muted)]">
-                    {!campaign.isActive ? 'Closed' : isGoalReached ? 'Goal Reached' : 'Active'}
-                  </span>
-                </div>
-                <h1 className="section-title text-[var(--text-primary)] mt-2">{campaign.title}</h1>
-              </div>
-
-              <Link
-                to={`/audit/campaign/${id}`}
-                className="text-xs px-3.5 py-2 rounded-full apple-inset text-[var(--text-primary)] hover:border-[var(--apple-blue-border)] font-semibold transition-colors flex items-center gap-1.5 self-start sm:self-auto apple-press"
-              >
-                <span>View Campaign Audit</span>
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+      {/* Phones get the donate card straight after the title; from lg it sits in the right column.
+          The auto/1fr rows keep the right column packed while the story spans both rows. */}
+      <div className="grid gap-x-8 gap-y-8 lg:gap-y-4 items-start lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:grid-rows-[auto_1fr]">
+        <section aria-label="Donate" className="card-raised p-6 flex flex-col gap-5 min-w-0 lg:col-start-2 lg:row-start-1">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-[34px] font-bold tracking-[-0.03em]">{Number(raised).toFixed(4)} ETH</span>
+              <span className="text-[15px] text-[var(--ink-3)]">of {goal}</span>
             </div>
-
-            {/* Prominent Verification Badge Card (lg size) */}
-            {!isVerifying && verification && (
-              <VerificationBadge
-                badge={verification.badge}
-                score={verification.score}
-                reason={verification.reason}
-                size="lg"
-              />
-            )}
-
-            {/* Campaign Owner Address */}
-            <div className="apple-inset p-4 rounded-2xl text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="font-sans font-semibold text-[var(--text-primary)]">Campaign Creator:</span>
-              <a
-                href={`https://sepolia.etherscan.io/address/${campaign.owner}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[var(--apple-blue)] font-bold hover:underline break-all"
-              >
-                {campaign.owner}
-              </a>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <span className="caption-label text-[var(--text-muted)]">Campaign Overview</span>
-              <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-line text-xs sm:text-sm font-normal">
-                {campaign.description}
-              </p>
-            </div>
-
-            {/* IPFS Hash */}
-            {campaign.ipfsHash && (
-              <div className="apple-inset p-3.5 rounded-2xl text-xs font-mono text-[var(--text-muted)] flex items-center justify-between">
-                <span className="font-sans font-semibold text-[var(--text-primary)]">IPFS Metadata Hash:</span>
-                <span className="text-[var(--apple-blue)] font-medium">{campaign.ipfsHash}</span>
-              </div>
-            )}
-
-            {/* Progress Metrics */}
-            <div className="space-y-3 pt-2">
-              <div className="flex justify-between items-end">
-                <div>
-                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--apple-green)]">{raised} ETH</span>
-                  {ethPrice > 0 && (
-                    <span className="text-xs text-[var(--text-muted)] font-semibold ml-2">({formatUsd(raised, ethPrice)})</span>
-                  )}
-                  <span className="text-[var(--text-muted)] text-xs font-medium ml-2">of {goal} ETH goal</span>
-                </div>
-                <span className="text-[var(--apple-green)] font-bold text-sm">{percent}% Funded</span>
-              </div>
-
-              {/* Apple Progress Bar */}
-              <div className="w-full bg-[var(--bg-inset)] h-2.5 rounded-full overflow-hidden border border-[var(--border-subtle)]">
-                <div
-                  className="bg-gradient-to-r from-[var(--apple-green)] to-[var(--apple-blue)] h-full rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 text-center">
-                <div className="apple-inset p-3.5 rounded-2xl">
-                  <span className="caption-label text-[var(--text-muted)]">Target Goal</span>
-                  <p className="text-lg font-bold text-[var(--text-primary)] mt-0.5">{goal} ETH</p>
-                  {ethPrice > 0 && <p className="text-[11px] text-[var(--text-muted)]">{formatUsd(goal, ethPrice)}</p>}
-                </div>
-                <div className="apple-inset p-3.5 rounded-2xl">
-                  <span className="caption-label text-[var(--apple-green)]">Total Raised</span>
-                  <p className="text-lg font-bold text-[var(--apple-green)] mt-0.5">{raised} ETH</p>
-                  {ethPrice > 0 && <p className="text-[11px] text-[var(--text-muted)]">{formatUsd(raised, ethPrice)}</p>}
-                </div>
-              </div>
+            <Progress percent={percent} />
+            <div className="flex justify-between text-sm text-[var(--ink-2)]">
+              <span>{percent}% funded</span>
+              <span>
+                {ethPrice > 0 ? formatUsd(raised, ethPrice) : plural(donationCount, 'donation')}
+              </span>
             </div>
           </div>
 
-          {/* ── DONATION SECTION ── */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-4">
-              <h2 className="headline text-[var(--text-primary)] flex items-center gap-2">
-                <svg className="w-5 h-5 text-[var(--apple-blue)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <rect x="2" y="5" width="20" height="14" rx="2" />
-                  <line x1="2" y1="10" x2="22" y2="10" />
-                </svg>
-                <span>Make a Transparent Donation</span>
-              </h2>
-
-              <Link
-                to="/check"
-                className={`text-xs px-3.5 py-2 rounded-full font-semibold transition-all flex items-center gap-1.5 apple-press ${
-                  badgeType === 'CAUTION'
-                    ? 'bg-[var(--apple-amber-tint)] text-[var(--apple-amber)] border border-[var(--apple-amber-border)]'
-                    : 'apple-inset text-[var(--text-secondary)] hover:border-[var(--apple-blue-border)]'
-                }`}
-              >
-                <span>Check Wallet Risk First →</span>
-              </Link>
+          {!campaign.isActive ? (
+            <Notice tone="pending" title="This campaign is closed">The creator closed it, so it can no longer take donations.</Notice>
+          ) : isGoalReached ? (
+            <Notice tone="success" title="Goal reached">This campaign raised its full {goal} ETH. Thank you to everyone who gave.</Notice>
+          ) : badgeType === 'FLAGGED' ? (
+            <div className="rounded-[10px] p-4 bg-[var(--red-tint)] text-[var(--red)] flex gap-3">
+              <BlockedIcon size={20} className="shrink-0 mt-0.5" />
+              <div className="text-sm leading-relaxed">
+                <p className="m-0 font-semibold">Donations blocked</p>
+                <p className="m-0 mt-1 text-[var(--ink-body)]">The creator's wallet failed the risk check or is on CryptoScamDB.</p>
+              </div>
             </div>
-
-            {/* Block donation form if FLAGGED, INACTIVE, or GOAL REACHED */}
-            {!campaign.isActive ? (
-              <div className="p-6 rounded-2xl apple-inset text-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-[var(--apple-red-tint)] text-[var(--apple-red)] flex items-center justify-center mx-auto">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+          ) : (
+            <form onSubmit={handleDonate} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2.5">
+                <label htmlFor="donation-amount" className="field-label">Amount</label>
+                <div className="field-group min-h-[52px]">
+                  <input
+                    id="donation-amount"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={donationEth}
+                    onChange={(e) => setDonationEth(e.target.value)}
+                    className="text-xl font-semibold"
+                    disabled={donateBusy}
+                  />
+                  <span className="text-[15px] text-[var(--ink-3)] font-medium">ETH</span>
                 </div>
-                <h3 className="headline text-[var(--text-primary)]">Campaign Deactivated</h3>
-                <p className="text-xs text-[var(--text-muted)] font-normal">This campaign has been closed by the owner and can no longer receive donations.</p>
-              </div>
-            ) : isGoalReached ? (
-              <div className="p-8 rounded-3xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-center space-y-4 shadow-sm">
-                <div className="w-12 h-12 rounded-full bg-[var(--apple-green)] text-white flex items-center justify-center mx-auto shadow-md">
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m9 12 2 2 4-4"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="headline text-[var(--apple-green)]">
-                    Target Goal Successfully Reached!
-                  </h3>
-                  <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal mt-1">
-                    This campaign has met its full funding goal of <span className="font-bold text-[var(--text-primary)]">{goal} ETH</span>. Thank you to all donors!
-                  </p>
-                </div>
-              </div>
-            ) : badgeType === 'FLAGGED' ? (
-              <div className="p-6 rounded-3xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] text-center space-y-3">
-                <div className="w-10 h-10 rounded-full bg-[var(--apple-red)] text-white flex items-center justify-center mx-auto">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                  </svg>
-                </div>
-                <h3 className="headline text-[var(--apple-red)]">Donations Blocked for Flagged Campaign</h3>
-                <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal">
-                  This campaign's owner wallet failed security risk checks or is blacklisted on CryptoScamDB. Direct donations are disabled for donor safety.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleDonate} className="space-y-5">
-                <div className="space-y-2.5">
-                  <label className="caption-label text-[var(--text-muted)]">Donation Amount (ETH)</label>
-
-                  {/* Quick Preset Amount Buttons */}
-                  <div className="flex flex-wrap items-center gap-2 pb-1">
-                    {['0.001', '0.01', '0.05', '0.1'].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setDonationEth(preset)}
-                        className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer apple-press ${
-                          donationEth === preset
-                            ? 'bg-[var(--apple-blue)] text-white border-[var(--apple-blue)] shadow-sm'
-                            : 'apple-inset text-[var(--text-secondary)] hover:border-[var(--apple-blue-border)]'
-                        }`}
-                      >
-                        + {preset} ETH
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="Enter amount in ETH (e.g. 0.001, 0.05)"
-                      value={donationEth}
-                      onChange={(e) => setDonationEth(e.target.value)}
-                      className="flex-1 apple-inset rounded-2xl px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] font-semibold"
-                    />
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESETS.map((preset) => (
                     <button
-                      type="submit"
-                      disabled={isDonatePending || isDonateConfirming}
-                      className="px-6 py-3 rounded-full bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer apple-press"
-                    >
-                      {isDonatePending || isDonateConfirming ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        <span>Donate Now</span>
-                      )}
-                    </button>
-                  </div>
-                  {donationEth && Number(donationEth) > 0 && ethPrice > 0 && (
-                    <p className="text-xs text-[var(--apple-green)] font-semibold pl-1">
-                      ≈ {donationUsd} USD
-                      <span className="text-[var(--text-muted)] ml-2 font-normal">(1 ETH = ${ethPrice.toLocaleString()})</span>
-                    </p>
-                  )}
-                </div>
-
-                {donationError && (
-                  <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-                    ⚠️ {donationError}
-                  </p>
-                )}
-
-                {/* Donation Pending */}
-                {(isDonatePending || isDonateConfirming) && (
-                  <div className="p-4 rounded-2xl bg-[var(--apple-blue-tint)] border border-[var(--apple-blue-border)] flex items-center gap-3">
-                    <span className="text-xl">⏳</span>
-                    <div className="text-xs">
-                      <p className="font-bold text-[var(--apple-blue)]">
-                        {isDonatePending ? 'Confirm donation in your wallet...' : 'Waiting for block confirmation...'}
-                      </p>
-                      {donateTxHash && <p className="text-[var(--text-muted)] font-mono mt-0.5">Tx: {donateTxHash.slice(0, 10)}...{donateTxHash.slice(-8)}</p>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Donation Success */}
-                {isDonateSuccess && donateTxHash && (
-                  <div className="p-4 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] space-y-1 animate-apple-fade-in">
-                    <p className="text-xs font-bold text-[var(--apple-green)] flex items-center gap-2">
-                      <span>✓</span> Thank You! Your Donation Has Been Received On-Chain.
-                    </p>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      Transaction Hash:{' '}
-                      <a
-                        href={`https://sepolia.etherscan.io/tx/${donateTxHash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline font-mono font-semibold text-[var(--apple-blue)]"
-                      >
-                        {donateTxHash.slice(0, 12)}...{donateTxHash.slice(-8)}
-                      </a>
-                    </p>
-                  </div>
-                )}
-              </form>
-            )}
-          </div>
-
-          {/* ── OWNER MANAGEMENT: Disburse Funds ── */}
-          {isOwner && (
-            <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 border border-[var(--apple-blue-border)]">
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                <div>
-                  <h3 className="headline text-[var(--text-primary)] flex items-center gap-2">
-                    <span>Vault Escrow Disbursement</span>
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Withdraw raised donations from the smart contract escrow directly to your creator wallet.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 apple-inset p-4 rounded-2xl text-center">
-                <div>
-                  <span className="caption-label text-[var(--text-muted)]">Available to Claim</span>
-                  <p className="text-xl font-bold text-[var(--apple-green)] mt-0.5">{availableEth} ETH</p>
-                </div>
-                <div>
-                  <span className="caption-label text-[var(--text-muted)]">Already Disbursed</span>
-                  <p className="text-xl font-bold text-[var(--apple-blue)] mt-0.5">{disbursedEth} ETH</p>
-                </div>
-              </div>
-
-              {Number(availableEth) > 0 ? (
-                <form onSubmit={handleDisburse} className="space-y-3">
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder={`Max: ${availableEth} ETH`}
-                      value={disburseAmountEth}
-                      onChange={(e) => setDisburseAmountEth(e.target.value)}
-                      className="flex-1 apple-inset rounded-2xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--apple-blue-border)] font-semibold"
-                    />
-                    <button
+                      key={preset}
                       type="button"
-                      onClick={() => setDisburseAmountEth(availableEth)}
-                      className="px-3.5 py-2 rounded-full apple-inset text-xs font-semibold text-[var(--apple-blue)] hover:border-[var(--apple-blue-border)] cursor-pointer apple-press"
+                      onClick={() => setDonationEth(preset)}
+                      aria-pressed={donationEth === preset}
+                      className={`btn px-2 text-[13px] font-medium ${donationEth === preset ? 'btn-primary' : 'btn-secondary'}`}
                     >
-                      Max
+                      {preset}
                     </button>
-                    <button
-                      type="submit"
-                      disabled={isDisbursePending || isDisburseConfirming}
-                      className="px-6 py-2.5 rounded-full bg-[var(--apple-green)] hover:bg-[var(--apple-green-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer apple-press"
-                    >
-                      {isDisbursePending || isDisburseConfirming ? 'Disbursing...' : 'Disburse Funds'}
-                    </button>
-                  </div>
+                  ))}
+                </div>
+                {donationEth && Number(donationEth) > 0 && ethPrice > 0 && (
+                  <p className="m-0 text-[13px] text-[var(--ink-2)]">≈ {donationUsd} at ${ethPrice.toLocaleString()} per ETH</p>
+                )}
+              </div>
 
-                  {disburseError && (
-                    <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-                      ⚠️ {disburseError}
-                    </p>
-                  )}
+              <button type="submit" disabled={donateBusy} className="btn btn-primary btn-xl w-full">
+                {donateBusy ? (
+                  <>
+                    <Spinner />
+                    {isDonatePending ? 'Confirm in your wallet…' : 'Waiting for the block…'}
+                  </>
+                ) : !address ? (
+                  'Connect wallet to donate'
+                ) : (
+                  `Donate${donationEth && Number(donationEth) > 0 ? ` ${donationEth} ETH` : ''}`
+                )}
+              </button>
 
-                  {isDisburseSuccess && (
-                    <div className="p-3.5 rounded-2xl bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] text-xs text-[var(--apple-green)] font-semibold">
-                      ✓ Funds successfully transferred from smart contract to your wallet!
+              {donationError && <Notice tone="error">{donationError}</Notice>}
+
+              {isDonateSuccess && donateTxHash && (
+                <Notice tone="success" title="Donation received">
+                  Recorded in{' '}
+                  <a href={`https://sepolia.etherscan.io/tx/${donateTxHash}`} target="_blank" rel="noreferrer" className="link mono font-normal">
+                    {shortAddr(donateTxHash, 10, 6)}
+                  </a>
+                </Notice>
+              )}
+
+              <p className="m-0 text-[13px] leading-normal text-[var(--ink-2)]">
+                Your ETH goes to the escrow contract, not the creator. They can only withdraw through a logged disbursement.
+              </p>
+            </form>
+          )}
+        </section>
+
+        <div className="min-w-0 flex flex-col gap-8 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+          <section className="flex flex-col gap-3">
+            <h2 className="h3">About this campaign</h2>
+            <p className="m-0 text-base leading-[1.7] text-[var(--ink-body)] whitespace-pre-line">{campaign.description}</p>
+          </section>
+
+          <RiskReportCard verification={verification} loading={isVerifying} owner={campaign.owner} />
+
+          <section className="flex flex-col gap-3.5">
+            <div className="flex justify-between items-baseline gap-3 flex-wrap">
+              <h2 className="h3 flex items-center gap-2.5">
+                Contract ledger
+                <span className="badge tone-verified text-[11px]"><span className="dot" />Live</span>
+              </h2>
+              <Link to={`/audit/campaign/${id}`} className="link text-sm py-2.5">Open audit trail →</Link>
+            </div>
+            <div className="card overflow-x-auto">
+              {txLoading && displayTransactions.length === 0 ? (
+                <div className="p-5 flex flex-col gap-3" aria-busy="true">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <span key={i} className="skeleton h-5 w-full" />
+                  ))}
+                </div>
+              ) : displayTransactions.length === 0 ? (
+                <p className="m-0 p-8 text-center text-sm text-[var(--ink-3)]">No transactions for this campaign yet.</p>
+              ) : (
+                <div className="max-h-[560px] overflow-y-auto">
+                  <table className="ledger min-w-[560px]">
+                    <thead>
+                      <tr>
+                        <th scope="col">Event</th>
+                        <th scope="col">From</th>
+                        <th scope="col" className="num">Amount</th>
+                        <th scope="col">Tx</th>
+                        <th scope="col" className="num">When</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayTransactions.map((tx) => (
+                        <tr key={tx.hash}>
+                          <td>
+                            <span className="inline-flex items-center gap-2 font-medium whitespace-nowrap">
+                              <span className="w-2 h-2 rounded-sm" style={{ background: EVENT_DOT[tx.type] || 'var(--ink-3)' }} />
+                              {tx.type}
+                              {tx.isPending && <span className="badge tone-caution text-[11px]">Confirming</span>}
+                            </span>
+                          </td>
+                          <td className="mono text-[13px] text-[var(--ink-2)] whitespace-nowrap">{shortAddr(tx.from)}</td>
+                          <td className="num font-semibold whitespace-nowrap">
+                            {tx.value > 0 ? `${tx.type === 'Disbursement' ? '−' : '+'}${tx.value.toFixed(4)} ETH` : '—'}
+                          </td>
+                          <td>
+                            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="link mono text-[13px] font-normal">
+                              {shortAddr(tx.hash, 6, 4)} ↗
+                            </a>
+                          </td>
+                          <td className="num text-[var(--ink-3)] whitespace-nowrap">{tx.date ? timeAgo(tx.date) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="min-w-0 flex flex-col gap-4 lg:col-start-2 lg:row-start-2">
+          <section aria-label="Escrow vault" className="card p-6 flex flex-col gap-3.5">
+            <h2 className="m-0 text-base font-semibold">Escrow vault</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="well p-3.5 flex flex-col gap-0.5">
+                <span className="text-[13px] text-[var(--ink-3)]">Held</span>
+                <span className="text-lg font-bold text-[var(--accent)] whitespace-nowrap">
+                  {Number(availableEth).toFixed(4)} <span className="text-sm">ETH</span>
+                </span>
+              </div>
+              <div className="well p-3.5 flex flex-col gap-0.5">
+                <span className="text-[13px] text-[var(--ink-3)]">Disbursed</span>
+                <span className="text-lg font-bold whitespace-nowrap">
+                  {Number(disbursedEth).toFixed(4)} <span className="text-sm">ETH</span>
+                </span>
+              </div>
+            </div>
+
+            {isOwner ? (
+              Number(availableEth) > 0 ? (
+                <form onSubmit={handleDisburse} className="flex flex-col gap-3 pt-1">
+                  <label htmlFor="disburse-amount" className="field-label">Withdraw to your wallet</label>
+                  <div className="flex gap-2">
+                    <div className="field-group flex-1 min-w-0">
+                      <input
+                        id="disburse-amount"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={`Up to ${availableEth}`}
+                        value={disburseAmountEth}
+                        onChange={(e) => setDisburseAmountEth(e.target.value)}
+                        disabled={isDisbursePending || isDisburseConfirming}
+                      />
+                      <button type="button" onClick={() => setDisburseAmountEth(availableEth)} className="link bg-transparent border-0 cursor-pointer text-sm font-[inherit] min-h-11">
+                        Max
+                      </button>
                     </div>
-                  )}
+                  </div>
+                  <button type="submit" disabled={isDisbursePending || isDisburseConfirming} className="btn btn-primary w-full">
+                    {isDisbursePending || isDisburseConfirming ? (
+                      <>
+                        <Spinner />
+                        Disbursing…
+                      </>
+                    ) : (
+                      'Disburse funds'
+                    )}
+                  </button>
+                  {disburseError && <Notice tone="error">{disburseError}</Notice>}
+                  {isDisburseSuccess && <Notice tone="success">Funds sent from escrow to your wallet.</Notice>}
                 </form>
               ) : (
-                <p className="text-xs text-[var(--text-muted)] text-center py-2 font-normal">
-                  No available balance to disburse at this time.
-                </p>
-              )}
-            </div>
-          )}
+                <p className="m-0 text-[13px] text-[var(--ink-3)]">Nothing to withdraw yet.</p>
+              )
+            ) : (
+              <p className="m-0 text-[13px] text-[var(--ink-3)]">Only the creator wallet can withdraw, and every withdrawal shows up in the ledger.</p>
+            )}
+          </section>
 
-          {/* ── DANGER ZONE: Deactivate Campaign ── */}
+          <Link
+            to={`/check?address=${campaign.owner}`}
+            className="card flex justify-between items-center min-h-[52px] px-5 text-sm font-semibold no-underline text-[var(--ink)] hover:border-[var(--rule-strong)]"
+          >
+            Check this creator yourself
+            <span aria-hidden="true">→</span>
+          </Link>
+
           {isOwner && campaign.isActive && (
-            <div className="apple-glass p-6 sm:p-8 rounded-3xl border border-[var(--apple-red-border)] space-y-4">
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                <div>
-                  <h3 className="headline text-[var(--apple-red)]">
-                    Danger Zone
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Deactivating this campaign will permanently close donations on-chain.
-                  </p>
-                </div>
-              </div>
-
-              {deactivateError && (
-                <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-                  ⚠️ {deactivateError}
-                </p>
-              )}
-
+            <section aria-label="Close campaign" className="card p-6 flex flex-col gap-3 border-[var(--red-tint)]">
+              <h2 className="m-0 text-base font-semibold">Close this campaign</h2>
+              <p className="m-0 text-[13px] leading-normal text-[var(--ink-2)]">Stops new donations for good. Funds already in escrow stay withdrawable.</p>
+              {deactivateError && <Notice tone="error">{deactivateError}</Notice>}
               {(isDeactivatePending || isDeactivateConfirming) && (
-                <div className="p-4 rounded-2xl bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] flex items-center gap-3">
-                  <span className="text-xl">⏳</span>
-                  <div className="text-xs">
-                    <p className="font-bold text-[var(--apple-red)]">
-                      {isDeactivatePending ? 'Confirm deactivation in your wallet...' : 'Deactivating campaign on-chain...'}
-                    </p>
-                    {deactivateTxHash && (
-                      <p className="text-[var(--apple-red)] font-mono mt-0.5">Tx: {deactivateTxHash.slice(0, 10)}...{deactivateTxHash.slice(-8)}</p>
-                    )}
-                  </div>
-                </div>
+                <Notice tone="pending">
+                  {isDeactivatePending ? 'Confirm in your wallet…' : 'Closing the campaign on-chain…'}
+                </Notice>
               )}
-
+              {isDeactivateSuccess && <Notice tone="success">Campaign closed. Taking you back to campaigns…</Notice>}
               <button
                 type="button"
                 onClick={handleDeactivate}
-                disabled={isDeactivatePending || isDeactivateConfirming}
-                className="w-full py-3 rounded-full bg-transparent hover:bg-[var(--apple-red-tint)] text-[var(--apple-red)] border border-[var(--apple-red-border)] hover:border-[var(--apple-red)] text-xs font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer apple-press"
+                disabled={isDeactivatePending || isDeactivateConfirming || isDeactivateSuccess}
+                className="btn btn-danger w-full"
               >
-                Deactivate Campaign
+                Close campaign
               </button>
-            </div>
+            </section>
           )}
-
-        </div>
-
-        {/* RIGHT COLUMN — Transaction History (1/3 width) */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="apple-glass p-5 sm:p-6 rounded-3xl sticky top-20">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3 mb-4">
-              <h3 className="headline text-[var(--text-primary)] text-sm flex items-center gap-2">
-                <span>Contract Ledger</span>
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--apple-green)] bg-[var(--apple-green-tint)] border border-[var(--apple-green-border)] px-2.5 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--apple-green)] animate-pulse inline-block"></span>
-                  Live
-                </span>
-                <span className="text-[10px] font-mono text-[var(--text-muted)] apple-inset px-2 py-0.5 rounded-full font-bold">
-                  {displayTransactions.length} txs
-                </span>
-              </div>
-            </div>
-
-            {txLoading && displayTransactions.length === 0 ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="animate-pulse space-y-2">
-                    <div className="h-3 bg-[var(--border-color)] rounded-full w-3/4"></div>
-                    <div className="h-3 bg-[var(--border-color)] rounded-full w-1/2"></div>
-                    <div className="h-px bg-[var(--border-color)] mt-2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : displayTransactions.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)] text-center py-8">No transactions found for this campaign.</p>
-            ) : (
-              <div className="space-y-2 max-h-[68vh] overflow-y-auto pr-1">
-                {displayTransactions.map((tx, i) => (
-                  <div key={i} className="p-3 rounded-2xl hover:bg-[var(--bg-inset)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            tx.type === 'Donation'
-                              ? 'bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)]'
-                              : tx.type === 'Disbursement'
-                              ? 'bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]'
-                              : tx.type === 'Campaign Deactivated'
-                              ? 'bg-[var(--apple-red-tint)] text-[var(--apple-red)] border border-[var(--apple-red-border)]'
-                              : tx.type === 'Campaign Created'
-                              ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                              : 'apple-inset text-[var(--text-muted)]'
-                          }`}
-                        >
-                          {tx.type}
-                        </span>
-                        {tx.isPending && (
-                          <span className="text-[9px] font-bold text-[var(--apple-amber)] bg-[var(--apple-amber-tint)] border border-[var(--apple-amber-border)] px-1.5 py-0.5 rounded-full animate-pulse">
-                            ⏳ Confirming
-                          </span>
-                        )}
-                      </div>
-                      {tx.value > 0 && (
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</span>
-                          {ethPrice > 0 && (
-                            <span className="text-[10px] text-[var(--text-muted)] ml-1">({formatUsd(tx.value, ethPrice)})</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-[10px] text-[var(--text-muted)] space-y-0.5">
-                      <p>
-                        From:{' '}
-                        <span className="text-[var(--text-secondary)] font-mono">{tx.from.slice(0, 8)}...{tx.from.slice(-6)}</span>
-                      </p>
-                      {tx.date && (
-                        <p>{tx.date.toLocaleDateString()} {tx.date.toLocaleTimeString()}</p>
-                      )}
-                      <a
-                        href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[var(--apple-blue)] hover:underline font-mono block pt-0.5"
-                      >
-                        {tx.hash.slice(0, 10)}...{tx.hash.slice(-6)}
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Etherscan Link */}
-            <div className="pt-3 border-t border-[var(--border-color)] mt-3">
-              <a
-                href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-[var(--apple-blue)] hover:underline font-semibold flex items-center justify-between apple-press"
-              >
-                <span>View Full Contract on Etherscan</span>
-                <span>→</span>
-              </a>
-            </div>
-          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function RiskReportCard({ verification, loading, owner }) {
+  const signals = verification?.report?.signals || [];
+
+  return (
+    <section aria-label="Creator risk report" className="card overflow-hidden">
+      <div className="px-6 py-[22px] flex flex-wrap gap-5 justify-between items-center border-b border-[var(--rule-soft)]">
+        <div className="flex flex-col gap-1">
+          <h2 className="m-0 text-lg font-semibold tracking-[-0.02em]">Creator risk report</h2>
+          <span className="text-sm text-[var(--ink-2)]">Checks run on the creator wallet's Sepolia history.</span>
+        </div>
+        {loading ? (
+          <span className="skeleton h-10 w-20" />
+        ) : (
+          verification && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[40px] font-bold tracking-[-0.03em] leading-none">{verification.score}</span>
+              <span className="text-sm text-[var(--ink-3)]">/ 100</span>
+            </div>
+          )
+        )}
+      </div>
+
+      {loading ? (
+        <div className="p-6 flex flex-col gap-3" aria-busy="true">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span key={i} className="skeleton h-9 w-full" />
+          ))}
+        </div>
+      ) : signals.length === 0 ? (
+        <p className="m-0 px-6 py-5 text-sm text-[var(--ink-2)]">{verification?.reason || 'The risk check could not finish. Try again shortly.'}</p>
+      ) : (
+        signals.map((s) => {
+          const pts = signalPoints(s);
+          return (
+            <div key={s.name} className="grid gap-3.5 items-center px-6 py-3.5 border-b border-[var(--rule-soft)]" style={{ gridTemplateColumns: '20px minmax(0, 1fr) auto' }}>
+              {s.isWarning ? (
+                <AlertIcon size={18} className="text-[var(--amber)]" />
+              ) : (
+                <CheckIcon size={18} className="text-[var(--accent)]" />
+              )}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[15px] font-medium">{s.name}</span>
+                <span className="text-[13px] text-[var(--ink-3)]">{s.description}</span>
+              </div>
+              <span className={`mono text-[13px] ${pts > 0 ? 'text-[var(--red)]' : 'text-[var(--ink-3)]'}`}>{pts > 0 ? `+${pts}` : '0'}</span>
+            </div>
+          );
+        })
+      )}
+
+      <div className="px-6 py-3.5 flex justify-end">
+        <Link to={`/check?address=${owner}`} className="link text-sm py-2.5">Run the full check →</Link>
+      </div>
+    </section>
   );
 }

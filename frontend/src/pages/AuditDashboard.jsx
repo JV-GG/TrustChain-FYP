@@ -2,10 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { formatEther } from 'viem';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
+import { useTheme } from '../hooks/useTheme';
+import { Notice, StatStrip } from '../components/ui';
+import { plural, shortAddr } from '../lib/format';
+
+const CHART_COLORS = {
+  light: { donation: '#0f6b47', disbursement: '#111613', grid: '#e6e9e3', axis: '#5e6661', surface: '#ffffff', rule: '#daddd8', ink: '#111613' },
+  dark: { donation: '#4cc38a', disbursement: '#eef1ec', grid: '#2a322d', axis: '#959d97', surface: '#161b18', rule: '#2a322d', ink: '#eef1ec' },
+};
 
 export default function AuditDashboard() {
   const { identifier, campaignId: routeCampaignId } = useParams();
@@ -26,6 +34,9 @@ export default function AuditDashboard() {
   const [totalDonations, setTotalDonations] = useState(0);
   const [totalDisbursements, setTotalDisbursements] = useState(0);
   const [chartData, setChartData] = useState([]);
+  const [tab, setTab] = useState('all');
+  const { theme } = useTheme();
+  const colors = CHART_COLORS[theme] || CHART_COLORS.light;
 
   useEffect(() => {
     async function fetchAuditData() {
@@ -146,6 +157,12 @@ export default function AuditDashboard() {
         let rawTxs = [];
         if (txRes?.data && Array.isArray(txRes.data.result)) {
           rawTxs = txRes.data.result;
+        } else {
+          setErrorMsg(
+            isCampaignAudit
+              ? 'Etherscan did not return the transaction history, so the chart and table are empty. The totals come straight from the contract. Try again in a moment.'
+              : 'Etherscan did not return the transaction history for this wallet. Try again in a moment.'
+          );
         }
 
         const processedTxs = [];
@@ -153,7 +170,23 @@ export default function AuditDashboard() {
         let disbursementsSum = 0;
         const monthlyTimeline = {};
 
+        // A campaign audit only counts calls that touch this campaign: matched by event log or by
+        // the campaignId in the first calldata argument (donate, disburseFunds, deactivateCampaign)
+        const belongsToCampaign = (tx) => {
+          if (matchingHashes.has((tx.hash || '').toLowerCase())) return true;
+          if (tx.input && tx.input.length >= 74) {
+            try {
+              return BigInt('0x' + tx.input.slice(10, 74)) === targetCampaignId;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        };
+
         rawTxs.forEach((tx) => {
+          if (isCampaignAudit && !belongsToCampaign(tx)) return;
+          if (tx.isError === '1') return;
           const valEth = Number(formatEther(BigInt(tx.value || '0')));
           const fnName = (tx.functionName || '').toLowerCase();
           const fromAddr = (tx.from || '').toLowerCase();
@@ -253,183 +286,193 @@ export default function AuditDashboard() {
     fetchAuditData();
   }, [activeId, isCampaignAudit, targetCampaignId, targetAddress]);
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 space-y-8 animate-apple-fade-in">
-      
-      {/* ── Apple Inspector Header ── */}
-      <div className="border-b border-[var(--border-color)] pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <span className="caption-label px-3 py-1 rounded-full bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)] inline-block">
-            {isCampaignAudit ? 'Campaign Audit Dossier' : 'Wallet Audit Dossier'}
-          </span>
-          <h1 className="section-title text-[var(--text-primary)]">
-            {isCampaignAudit && campaignDetails
-              ? `Audit: Campaign #${campaignDetails.id} - ${campaignDetails.title}`
-              : isCampaignAudit
-              ? `Audit: Campaign #${activeId}`
-              : 'Wallet Audit Dashboard'}
-          </h1>
-          <p className="text-[var(--text-muted)] font-mono text-xs break-all pt-0.5">
-            {isCampaignAudit && campaignDetails ? (
-              <span>
-                Creator Address: <span className="text-[var(--apple-green)] font-semibold">{campaignDetails.owner}</span> | Goal: {campaignDetails.goal} ETH
-              </span>
-            ) : (
-              <span>
-                Target Address: <span className="text-[var(--apple-green)] font-semibold">{targetAddress || 'N/A'}</span>
-              </span>
-            )}
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {isCampaignAudit && campaignDetails?.owner && (
-            <Link
-              to={`/audit/${campaignDetails.owner}`}
-              className="text-xs px-4 py-2 rounded-full apple-glass font-semibold text-[var(--apple-green)] hover:border-[var(--apple-green-border)] transition-all cursor-pointer apple-press"
-            >
-              Full Wallet Audit →
-            </Link>
+  const rows = transactions.filter(
+    (tx) => tab === 'all' || (tab === 'in' ? tx.type === 'Donation' : tx.type === 'Disbursement')
+  );
+  const donationCount = transactions.filter((tx) => tx.type === 'Donation').length;
+  const disbursementCount = transactions.length - donationCount;
+
+  const stats = campaignDetails
+    ? (() => {
+        const raised = Number(campaignDetails.raised);
+        const out = Number(campaignDetails.disbursed);
+        const held = Math.max(0, raised - out);
+        return [
+          { label: 'Donated', value: raised.toFixed(4), unit: 'ETH', note: plural(donationCount, 'donation') },
+          { label: 'Disbursed', value: out.toFixed(4), unit: 'ETH', note: plural(disbursementCount, 'withdrawal') },
+          { label: 'Held in vault', value: held.toFixed(4), unit: 'ETH', accent: true, note: raised > 0 ? `${Math.round((held / raised) * 100)}% of donations` : 'Nothing raised yet' },
+          {
+            label: 'Goal',
+            value: Number(campaignDetails.goal).toFixed(2),
+            unit: 'ETH',
+            note: !campaignDetails.isActive ? 'Closed' : raised >= Number(campaignDetails.goal) ? 'Goal reached' : 'Raising',
+          },
+        ];
+      })()
+    : [
+        { label: 'Received', value: totalDonations.toFixed(4), unit: 'ETH', note: `${donationCount} incoming` },
+        { label: 'Sent out', value: totalDisbursements.toFixed(4), unit: 'ETH', note: `${disbursementCount} outgoing` },
+        { label: 'Net', value: (totalDonations - totalDisbursements).toFixed(4), unit: 'ETH', accent: true },
+      ];
+
+  return (
+    <div className="page pt-8 pb-24 flex flex-col gap-7">
+      <nav aria-label="Breadcrumb" className="text-sm text-[var(--ink-3)] flex gap-2 items-center flex-wrap">
+        <Link to="/campaigns" className="text-[var(--ink-2)] no-underline hover:underline py-3">Campaigns</Link>
+        <span aria-hidden="true">/</span>
+        {isCampaignAudit ? (
+          <>
+            <Link to={`/campaigns/${activeId}`} className="text-[var(--ink-2)] no-underline hover:underline py-3">#{activeId.padStart(2, '0')}</Link>
+            <span aria-hidden="true">/</span>
+          </>
+        ) : null}
+        <span className="text-[var(--ink)]">Audit</span>
+      </nav>
+
+      <div className="flex justify-between items-end gap-5 flex-wrap">
+        <div className="flex flex-col gap-2.5 min-w-0">
+          <span className="eyebrow">{isCampaignAudit ? `Audit trail · campaign #${activeId}` : 'Wallet audit'}</span>
+          <h1 className="h1 break-words">
+            {isCampaignAudit ? campaignDetails?.title || `Campaign #${activeId}` : <span className="mono text-[clamp(20px,3vw,32px)] tracking-normal break-all">{targetAddress || 'Unknown address'}</span>}
+          </h1>
+          {isCampaignAudit && campaignDetails && (
+            <p className="m-0 text-sm text-[var(--ink-2)]">
+              Creator <span className="mono text-[var(--ink)]">{shortAddr(campaignDetails.owner, 8, 6)}</span>
+            </p>
           )}
-          <Link
-            to="/check"
-            className="text-xs px-4 py-2 rounded-full apple-glass font-semibold text-[var(--text-primary)] hover:border-[var(--apple-blue-border)] transition-all cursor-pointer apple-press"
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isCampaignAudit && campaignDetails?.owner && (
+            <Link to={`/audit/${campaignDetails.owner}`} className="btn btn-secondary">Creator's wallet audit</Link>
+          )}
+          <a
+            href={`https://sepolia.etherscan.io/address/${isCampaignAudit ? CONTRACT_ADDRESS : targetAddress}`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary"
           >
-            Check Wallet Risk
-          </Link>
+            View on Etherscan ↗
+          </a>
         </div>
       </div>
 
       {loading ? (
-        <div className="animate-pulse space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-28 bg-[var(--border-color)] rounded-3xl"></div>
-            <div className="h-28 bg-[var(--border-color)] rounded-3xl"></div>
-          </div>
-          <div className="h-64 bg-[var(--border-color)] rounded-3xl"></div>
+        <div className="flex flex-col gap-6" aria-busy="true">
+          <span className="skeleton h-28" />
+          <span className="skeleton h-72" />
+          <span className="skeleton h-64" />
         </div>
       ) : (
         <>
-          {errorMsg && (
-            <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-              ⚠️ {errorMsg}
-            </p>
-          )}
+          {errorMsg && <Notice tone="error">{errorMsg}</Notice>}
 
-          {/* ── Stats Summary Cards (Apple Health Style) ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="apple-glass p-6 sm:p-7 rounded-3xl space-y-1.5 hover-lift">
-              <span className="caption-label text-[var(--text-muted)]">
-                {isCampaignAudit ? `Campaign #${activeId} Received Funds` : 'Total Donations Received'}
-              </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-[var(--apple-green)] tracking-tight">{totalDonations.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-secondary)] font-normal">
-                {isCampaignAudit ? `Incoming ETH donations for Campaign #${activeId}` : 'Total incoming ETH on Sepolia testnet'}
-              </p>
-            </div>
+          <StatStrip items={stats} />
 
-            <div className="apple-glass p-6 sm:p-7 rounded-3xl space-y-1.5 hover-lift">
-              <span className="caption-label text-[var(--text-muted)]">
-                {isCampaignAudit ? `Campaign #${activeId} Disbursed Funds` : 'Total Funds Disbursed'}
-              </span>
-              <p className="text-3xl sm:text-4xl font-extrabold text-[var(--apple-blue)] tracking-tight">{totalDisbursements.toFixed(4)} ETH</p>
-              <p className="text-xs text-[var(--text-secondary)] font-normal">
-                {isCampaignAudit ? `Outgoing ETH withdrawals for Campaign #${activeId}` : 'Total outgoing ETH transfers recorded on-chain'}
-              </p>
-            </div>
-          </div>
-
-          {/* ── Recharts Bar Chart (Apple Translucent Theme) ── */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 hover-lift">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <h3 className="headline text-[var(--text-primary)]">Donations & Disbursements Timeline</h3>
-              <span className="text-xs text-[var(--text-muted)] font-medium">
-                {isCampaignAudit ? `Campaign #${activeId} Audit Trail` : 'Synchronized by Date'}
-              </span>
+          <section aria-label="Money in and out" className="card p-6 flex flex-col gap-5">
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <h2 className="m-0 text-lg font-semibold tracking-[-0.02em]">Money in and out, by day</h2>
+              <div className="flex gap-[18px] text-[13px] text-[var(--ink-2)]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ background: colors.donation }} />
+                  Donations
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ background: colors.disbursement }} />
+                  Disbursements
+                </span>
+              </div>
             </div>
 
             {chartData.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-12 text-center font-normal">No donation or disbursement timeline data available for this target.</p>
+              <p className="m-0 py-12 text-center text-sm text-[var(--ink-3)]">No donations or disbursements to chart yet.</p>
             ) : (
-              <div className="h-80 w-full pt-4">
+              <figure className="m-0 h-72 w-full" aria-label={`Daily donations and disbursements across ${chartData.length} days`}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" opacity={0.3} />
-                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 500 }} />
-                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11, fontWeight: 500 }} />
+                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }} barGap={4} barSize={24}>
+                    <CartesianGrid vertical={false} stroke={colors.grid} />
+                    <XAxis dataKey="date" stroke={colors.axis} tickLine={false} axisLine={{ stroke: colors.rule }} tick={{ fontSize: 12 }} />
+                    <YAxis stroke={colors.axis} tickLine={false} axisLine={false} tick={{ fontSize: 11, fontFamily: 'Geist Mono, ui-monospace, monospace' }} width={48} />
                     <Tooltip
+                      cursor={{ fill: colors.grid, opacity: 0.5 }}
+                      formatter={(value) => [`${Number(value).toFixed(4)} ETH`]}
                       contentStyle={{
-                        backgroundColor: 'var(--bg-card-solid)',
-                        borderColor: 'var(--border-color)',
-                        borderRadius: '1rem',
-                        color: 'var(--text-primary)',
-                        fontWeight: 600,
-                        boxShadow: 'var(--shadow-lg)',
+                        backgroundColor: colors.surface,
+                        border: `1px solid ${colors.rule}`,
+                        borderRadius: 10,
+                        color: colors.ink,
+                        fontSize: 13,
                       }}
+                      labelStyle={{ color: colors.ink, fontWeight: 600 }}
                     />
-                    <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px', fontWeight: 600 }} />
-                    <Bar dataKey="Donations" name="Donations Received (ETH)" fill="#34c759" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="Disbursements" name="Funds Disbursed (ETH)" fill="#5856d6" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="Donations" fill={colors.donation} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Disbursements" fill={colors.disbursement} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </figure>
             )}
-          </div>
+          </section>
 
-          {/* ── Transaction History Table (Apple Grouped List) ── */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 hover-lift">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <h3 className="headline text-[var(--text-primary)]">Transaction History</h3>
-              <span className="text-xs text-[var(--text-muted)] font-mono font-medium">{transactions.length} Transactions</span>
+          <section className="flex flex-col gap-3.5">
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <h2 className="h3">Every transaction</h2>
+              <div role="group" aria-label="Filter transactions" className="seg">
+                {[
+                  ['all', 'All'],
+                  ['in', isCampaignAudit ? 'Donations' : 'Incoming'],
+                  ['out', isCampaignAudit ? 'Disbursements' : 'Outgoing'],
+                ].map(([id, label]) => (
+                  <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)} className="seg-item">
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            {transactions.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-8 text-center font-normal">No ETH donation or disbursement transactions found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+            <div className="card overflow-x-auto">
+              {rows.length === 0 ? (
+                <p className="m-0 p-8 text-center text-sm text-[var(--ink-3)]">No transactions in this view.</p>
+              ) : (
+                <table className="ledger min-w-[680px]">
                   <thead>
-                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-3">Date & Time</th>
-                      <th className="py-3 px-3">Type</th>
-                      <th className="py-3 px-3">Amount (ETH)</th>
-                      <th className="py-3 px-3">TxHash</th>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">From → to</th>
+                      <th scope="col" className="num">Amount</th>
+                      <th scope="col">Tx hash</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-subtle)]">
-                    {transactions.map((tx, i) => (
-                      <tr key={i} className="hover:bg-[var(--bg-inset)] font-mono transition-colors">
-                        <td className="py-3.5 px-3 text-[var(--text-secondary)] font-sans font-normal">
-                          {tx.date} <span className="text-[10px] text-[var(--text-muted)] font-mono ml-1">({tx.time})</span>
+                  <tbody>
+                    {rows.map((tx) => (
+                      <tr key={tx.hash}>
+                        <td className="text-[var(--ink-2)] whitespace-nowrap">
+                          {tx.date} <span className="text-[var(--ink-3)]">{tx.time}</span>
                         </td>
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                              tx.type.includes('Donation')
-                                ? 'bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)]'
-                                : 'bg-[var(--apple-blue-tint)] text-[var(--apple-blue)] border border-[var(--apple-blue-border)]'
-                            }`}
-                          >
+                        <td>
+                          <span className="inline-flex items-center gap-2 font-medium">
+                            <span className="w-2 h-2 rounded-sm" style={{ background: tx.type === 'Donation' ? colors.donation : colors.disbursement }} />
                             {tx.type}
                           </span>
                         </td>
-                        <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{tx.value.toFixed(4)} ETH</td>
-                        <td className="py-3.5 px-3 text-[var(--apple-blue)] hover:underline font-medium">
-                          <a
-                            href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
+                        <td className="mono text-[13px] text-[var(--ink-2)] whitespace-nowrap">
+                          {shortAddr(tx.from)} → {shortAddr(tx.to)}
+                        </td>
+                        <td className="num font-semibold whitespace-nowrap">
+                          {tx.type === 'Donation' ? '+' : '−'}
+                          {tx.value.toFixed(4)} ETH
+                        </td>
+                        <td>
+                          <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="link mono text-[13px] font-normal">
+                            {shortAddr(tx.hash, 6, 4)} ↗
                           </a>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </section>
         </>
       )}
     </div>

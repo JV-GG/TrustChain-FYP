@@ -1,427 +1,288 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { analyseWallet } from '../services/riskEngine';
+import VerificationBadge from '../components/VerificationBadge';
+import { AlertIcon, CheckIcon, Notice, RiskScale, Spinner } from '../components/ui';
+import { BAND, bandForScore, signalPoints } from '../lib/risk';
+import { shortAddr } from '../lib/format';
+
+const ADVICE = {
+  VERIFIED: {
+    head: 'Safe to proceed',
+    text: 'Long enough history, keeps what it receives, and no blacklist record.',
+    cls: 'bg-[var(--accent-tint)] text-[var(--accent)]',
+  },
+  CAUTION: {
+    head: 'Proceed with care',
+    text: 'Some signals are weak. Confirm who runs this wallet before you give.',
+    cls: 'bg-[var(--amber-tint)] text-[var(--amber)]',
+  },
+  UNVERIFIED: {
+    head: 'Treat as unknown',
+    text: 'Several risk signals fired. We advise against sending funds to this wallet.',
+    cls: 'bg-[var(--neutral-tint)] text-[var(--ink)]',
+  },
+  FLAGGED: {
+    head: 'Do not send funds',
+    text: 'This wallet is blacklisted or moves almost everything it receives straight out.',
+    cls: 'bg-[var(--red-tint)] text-[var(--red)]',
+  },
+};
+
+const isAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 
 export default function CheckWallet() {
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { address: connectedAddress } = useAccount();
 
-  const [inputAddress, setInputAddress] = useState('');
+  const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
+  const [checkedAddress, setCheckedAddress] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
 
-  const validateAddress = (addr) => {
-    return /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
-  };
-
-  const handleCheck = async (e) => {
-    if (e) e.preventDefault();
+  const runCheck = useCallback(async (raw) => {
     setErrorMsg('');
-    const target = inputAddress.trim();
+    const target = raw.trim();
 
     if (!target) {
-      setErrorMsg('Please enter an Ethereum wallet address.');
+      setErrorMsg('Paste an Ethereum address to check.');
       return;
     }
-
-    if (!validateAddress(target)) {
-      setErrorMsg('Invalid Ethereum address format. Expected 42-character hex string starting with 0x.');
+    if (!isAddress(target)) {
+      setErrorMsg('That isn’t a valid address. It should be 42 characters starting with 0x.');
       return;
     }
 
     setLoading(true);
     setReport(null);
-
     try {
-      const apiKey = import.meta.env.VITE_ETHERSCAN_API_KEY;
-      const res = await analyseWallet(target, apiKey);
+      const res = await analyseWallet(target, import.meta.env.VITE_ETHERSCAN_API_KEY);
       setReport(res);
+      setCheckedAddress(target);
     } catch (err) {
       console.error('Wallet analysis failed:', err);
-      setErrorMsg('Failed to fetch wallet analysis. Please check your network connection.');
+      setErrorMsg('The check could not reach Etherscan. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Deep links like /check?address=0x… run straight away
+  const paramAddress = searchParams.get('address');
+  useEffect(() => {
+    if (paramAddress && isAddress(paramAddress)) {
+      setInputAddress(paramAddress);
+      runCheck(paramAddress);
+    }
+  }, [paramAddress, runCheck]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const target = inputAddress.trim();
+    // A new valid address goes through the URL so the result is linkable; the effect runs it
+    if (isAddress(target) && target !== paramAddress) {
+      setSearchParams({ address: target }, { replace: true });
+      return;
+    }
+    runCheck(target);
   };
 
-  const handleUseConnectedWallet = () => {
-    if (connectedAddress) {
-      setInputAddress(connectedAddress);
-      setErrorMsg('');
-    }
-  };
-
-  // Helper styling for score & risk level
-  const getThemeByScore = (score) => {
-    if (score <= 25) {
-      return {
-        level: 'LOW',
-        badgeBg: 'bg-[var(--apple-green-tint)] border-[var(--apple-green-border)] text-[var(--apple-green)]',
-        scoreText: 'text-[var(--apple-green)]',
-        ringColor: 'stroke-[var(--apple-green)]',
-        alertBg: 'bg-[var(--apple-green-tint)] border-[var(--apple-green-border)] text-[var(--apple-green)]',
-        recommendation: 'This wallet appears safe to proceed with your donation.',
-      };
-    } else if (score <= 50) {
-      return {
-        level: 'MEDIUM',
-        badgeBg: 'bg-[var(--apple-amber-tint)] border-[var(--apple-amber-border)] text-[var(--apple-amber)]',
-        scoreText: 'text-[var(--apple-amber)]',
-        ringColor: 'stroke-[var(--apple-amber)]',
-        alertBg: 'bg-[var(--apple-amber-tint)] border-[var(--apple-amber-border)] text-[var(--apple-amber)]',
-        recommendation: 'Proceed with caution. Verify this wallet through other means.',
-      };
-    } else if (score <= 75) {
-      return {
-        level: 'HIGH',
-        badgeBg: 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400',
-        scoreText: 'text-orange-600 dark:text-orange-400',
-        ringColor: 'stroke-orange-500',
-        alertBg: 'bg-orange-500/10 border-orange-500/30 text-orange-800 dark:text-orange-200',
-        recommendation: 'We strongly advise against transferring funds to this wallet.',
-      };
-    } else {
-      return {
-        level: 'CRITICAL',
-        badgeBg: 'bg-[var(--apple-red-tint)] border-[var(--apple-red-border)] text-[var(--apple-red)]',
-        scoreText: 'text-[var(--apple-red)]',
-        ringColor: 'stroke-[var(--apple-red)]',
-        alertBg: 'bg-[var(--apple-red-tint)] border-[var(--apple-red-border)] text-[var(--apple-red)]',
-        recommendation: 'DO NOT TRANSFER. This wallet shows multiple high-risk signals.',
-      };
-    }
-  };
+  const band = report ? bandForScore(report.score) : null;
+  const effectiveBand = report?.isBlacklisted ? 'FLAGGED' : band;
+  const warnings = report ? report.signals.filter((s) => s.isWarning).length : 0;
+  const advice = effectiveBand
+    ? effectiveBand === 'VERIFIED' && warnings > 0
+      ? {
+          ...ADVICE.VERIFIED,
+          text: `Passes overall, but ${warnings === 1 ? 'one signal' : `${warnings} signals`} added points. Read ${warnings === 1 ? 'it' : 'them'} before you give.`,
+        }
+      : ADVICE[effectiveBand]
+    : null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-8 animate-apple-fade-in">
-      
-      {/* ── Apple Header ── */}
-      <div className="text-center max-w-2xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--apple-blue-tint)] border border-[var(--apple-blue-border)] text-[var(--apple-blue)] text-[11px] font-semibold uppercase tracking-wider">
-          <span>TrustChain Risk Engine</span>
-        </div>
-        <h1 className="section-title text-[var(--text-primary)]">
-          On-Chain Wallet Risk Assessment
-        </h1>
-        <p className="text-[var(--text-secondary)] text-xs sm:text-sm leading-relaxed font-normal">
-          Evaluates Ethereum creator wallets for drain ratio anomalies, wallet age, transaction velocity, and CryptoScamDB flags before donating.
+    <div className="page pt-14 pb-24 flex flex-col gap-8">
+      <div className="flex flex-col gap-2.5 max-w-[46rem]">
+        <h1 className="h1">Check any wallet</h1>
+        <p className="lead">
+          Paste a Sepolia address. We read its history from Etherscan, look it up on CryptoScamDB, and score it the same way we score every campaign creator.
         </p>
       </div>
 
-      {/* ── Spotlight-Style Input Form Card ── */}
-      <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4 shadow-xl">
-        <form onSubmit={handleCheck} className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Paste Ethereum wallet address (0x...)"
-                value={inputAddress}
-                onChange={(e) => setInputAddress(e.target.value)}
-                className="w-full apple-inset rounded-2xl pl-4 pr-28 py-3 text-xs text-[var(--text-primary)] font-mono placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--apple-blue-border)] transition-colors font-medium"
-              />
-              {connectedAddress && (
-                <button
-                  type="button"
-                  onClick={handleUseConnectedWallet}
-                  className="absolute right-2.5 top-2 text-[11px] px-3 py-1.5 rounded-full apple-glass text-[var(--apple-blue)] font-semibold hover:border-[var(--apple-blue-border)] transition-colors cursor-pointer apple-press"
-                >
-                  Use My Wallet
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 rounded-full bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer apple-press"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Analyzing...</span>
-                </>
-              ) : (
-                <>
-                  <span>Analyze Wallet</span>
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M5 12h14m-7-7 7 7-7 7" />
-                  </svg>
-                </>
-              )}
-            </button>
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2.5">
+          <label className="field-group flex-[1_1_420px] min-h-14">
+            <span className="sr-only">Wallet address</span>
+            <input
+              type="text"
+              placeholder="0x…"
+              value={inputAddress}
+              onChange={(e) => setInputAddress(e.target.value)}
+              className="mono text-[15px]"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            {connectedAddress && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInputAddress(connectedAddress);
+                  setErrorMsg('');
+                }}
+                className="link bg-transparent border-0 cursor-pointer text-[13px] font-[inherit] min-h-11 whitespace-nowrap"
+              >
+                Use my wallet
+              </button>
+            )}
+          </label>
+          <button type="submit" disabled={loading} className="btn btn-primary btn-xl min-h-14">
+            {loading ? (
+              <>
+                <Spinner />
+                Analysing…
+              </>
+            ) : (
+              'Analyse'
+            )}
+          </button>
+        </div>
+        {errorMsg && <Notice tone="error">{errorMsg}</Notice>}
+      </form>
 
-          {errorMsg && (
-            <p className="text-xs text-[var(--apple-red)] bg-[var(--apple-red-tint)] p-3.5 rounded-2xl border border-[var(--apple-red-border)] font-medium">
-              ⚠️ {errorMsg}
-            </p>
-          )}
-        </form>
-      </div>
-
-      {/* ── Loading Skeleton ── */}
       {loading && (
-        <div className="apple-glass p-8 rounded-3xl animate-pulse space-y-6">
-          <div className="flex justify-between items-center">
-            <div className="h-10 bg-[var(--border-color)] rounded-full w-1/3"></div>
-            <div className="h-10 bg-[var(--border-color)] rounded-full w-1/4"></div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 bg-[var(--border-color)] rounded-2xl"></div>
-            ))}
-          </div>
-          <div className="h-40 bg-[var(--border-color)] rounded-2xl"></div>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }} aria-busy="true">
+          <span className="skeleton h-[420px]" />
+          <span className="skeleton h-[420px]" />
         </div>
       )}
 
-      {/* ── Report Section ── */}
       {report && !loading && (
-        <div className="space-y-8 animate-apple-fade-in">
-          {/* Main Risk Overview */}
-          {(() => {
-            const theme = getThemeByScore(report.score);
-            return (
-              <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-6">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="space-y-2 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-3">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full border ${theme.badgeBg}`}>
-                        RISK LEVEL: {theme.level}
-                      </span>
-                      {report.isBlacklisted && (
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--apple-red-tint)] border border-[var(--apple-red-border)] text-[var(--apple-red)]">
-                          🚨 BLACKLISTED
-                        </span>
-                      )}
-                    </div>
-                    <h2 className="headline text-[var(--text-primary)]">Risk Assessment Result</h2>
-                    <p className="text-xs text-[var(--text-muted)] font-mono break-all">{inputAddress.trim()}</p>
-                  </div>
-
-                  {/* Circular Score Display (Apple Activity Ring Inspired) */}
-                  <div className="flex items-center gap-4 apple-inset p-4 rounded-3xl">
-                    <div className="relative w-20 h-20 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          className="text-[var(--border-color)] stroke-current"
-                          strokeWidth="3.5"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className={`${theme.ringColor} stroke-current transition-all duration-1000`}
-                          strokeDasharray={`${report.score}, 100`}
-                          strokeWidth="3.5"
-                          strokeLinecap="round"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <span className={`absolute text-2xl font-extrabold ${theme.scoreText}`}>
-                        {report.score}
-                      </span>
-                    </div>
-                    <div className="text-left">
-                      <span className="caption-label text-[var(--text-muted)]">Risk Score</span>
-                      <p className={`text-base font-bold ${theme.scoreText}`}>{report.score} / 100</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recommendation Box */}
-                <div className={`p-4 rounded-2xl border flex items-start gap-3.5 ${theme.alertBg}`}>
-                  <span className="text-xl">💡</span>
-                  <div className="space-y-0.5">
-                    <span className="caption-label opacity-80">Recommendation</span>
-                    <p className="text-xs sm:text-sm font-semibold">{theme.recommendation}</p>
-                  </div>
+        <>
+          <section aria-label="Result" className="grid gap-5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
+            <div className="card p-7 flex flex-col gap-[22px]">
+              <div className="flex justify-between items-center gap-3 flex-wrap">
+                <span className="text-sm font-semibold text-[var(--ink-2)]">Risk score</span>
+                <div className="flex gap-2 flex-wrap">
+                  {report.isBlacklisted && <span className="badge tone-flagged text-[13px] px-3 py-[5px]">On CryptoScamDB</span>}
+                  <VerificationBadge badge={effectiveBand} size="lg" />
                 </div>
               </div>
-            );
-          })()}
-
-          {/* ── Risk Signal Breakdown Cards ── */}
-          <div className="space-y-4">
-            <h3 className="headline text-[var(--text-primary)]">Risk Signal Breakdown</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-              <SignalCard
-                icon="📅"
-                label="Wallet Age"
-                value={`${report.walletAge} Days`}
-                subtext={report.isNewWallet ? 'New Wallet (< 30 days)' : 'Established'}
-                isWarning={report.isNewWallet}
-              />
-              <SignalCard
-                icon="🔢"
-                label="Transaction Count"
-                value={`${report.txCount}`}
-                subtext={report.hasLowActivity ? 'Low Activity (< 5 txs)' : 'Active History'}
-                isWarning={report.hasLowActivity}
-              />
-              <SignalCard
-                icon="💸"
-                label="Drain Ratio"
-                value={`${report.drainRatio}%`}
-                subtext={Number(report.drainRatio) > 90 ? 'Rapid Outflow (> 90%)' : 'Normal Flow'}
-                isWarning={Number(report.drainRatio) > 90}
-              />
-              <SignalCard
-                icon="🛑"
-                label="Blacklist Status"
-                value={report.isBlacklisted ? 'FLAGGED' : 'CLEAR'}
-                subtext={report.isBlacklisted ? report.blacklistDetails.category : 'No Scam Records'}
-                isWarning={report.isBlacklisted}
-              />
-              <SignalCard
-                icon="💎"
-                label="Balance"
-                value={`${report.balance} ETH`}
-                subtext="Sepolia ETH"
-                isWarning={false}
-              />
+              <p className="mono text-xs text-[var(--ink-3)] break-all m-0">{checkedAddress}</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[88px] font-bold tracking-[-0.05em] leading-[0.9]" style={{ color: BAND[band].color }}>
+                  {report.score}
+                </span>
+                <span className="text-lg text-[var(--ink-3)]">/ 100</span>
+              </div>
+              <RiskScale score={report.score} labels="names" />
+              <div className={`p-4 rounded-[10px] ${advice.cls}`}>
+                <span className="text-[15px] font-semibold">{advice.head}</span>
+                <p className="m-0 mt-1.5 text-sm leading-relaxed text-[var(--ink-body)]">{advice.text}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Fact k="Wallet age" v={`${report.walletAge} days`} />
+                <Fact k="Transactions" v={report.txCount} />
+                <Fact k="Balance" v={`${report.balance} ETH`} />
+                <Fact k="Outflow ratio" v={`${report.drainRatio}%`} />
+              </div>
             </div>
-          </div>
 
-          {/* ── Detailed Risk Factors (Apple Settings Grouped) ── */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4">
-            <h3 className="headline text-[var(--text-primary)]">Risk Factor Evaluation</h3>
-            <div className="space-y-3">
-              {report.signals.map((sig, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-4 rounded-2xl apple-inset"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{sig.isWarning ? '⚠️' : '✓'}</span>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">{sig.name}</h4>
-                      <p className="text-xs text-[var(--text-secondary)] font-normal">{sig.description}</p>
+            <div className="card overflow-hidden">
+              <div className="px-6 py-5 border-b border-[var(--rule-soft)] flex justify-between items-baseline gap-3">
+                <h2 className="m-0 text-lg font-semibold tracking-[-0.02em]">How the score adds up</h2>
+                <span className="text-[13px] text-[var(--ink-3)]">points added</span>
+              </div>
+              {report.signals.map((s) => {
+                const pts = signalPoints(s);
+                return (
+                  <div key={s.name} className="grid gap-3.5 items-start px-6 py-4 border-b border-[var(--rule-soft)]" style={{ gridTemplateColumns: '20px minmax(0, 1fr) 52px' }}>
+                    {s.isWarning ? (
+                      <AlertIcon size={18} className="text-[var(--red)] mt-0.5" />
+                    ) : (
+                      <CheckIcon size={18} className="text-[var(--accent)] mt-0.5" />
+                    )}
+                    <div className="flex flex-col gap-[3px]">
+                      <span className="text-[15px] font-semibold">{s.name}</span>
+                      <span className="text-sm leading-normal text-[var(--ink-2)]">{s.description}</span>
                     </div>
+                    <span className={`mono text-sm text-right font-medium ${pts > 0 ? 'text-[var(--red)]' : 'text-[var(--ink-3)]'}`}>
+                      {pts > 0 ? `+${pts}` : '0'}
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                      sig.isWarning
-                        ? 'bg-[var(--apple-red-tint)] text-[var(--apple-red)] border border-[var(--apple-red-border)]'
-                        : 'bg-[var(--apple-green-tint)] text-[var(--apple-green)] border border-[var(--apple-green-border)]'
-                    }`}
-                  >
-                    {sig.impact}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
+              <div className="grid gap-3.5 px-6 py-4 bg-[var(--surface-2)]" style={{ gridTemplateColumns: 'minmax(0, 1fr) 52px' }}>
+                <span className="text-[15px] font-semibold">Total{report.score === 100 ? ' (capped at 100)' : ''}</span>
+                <span className="mono text-[15px] text-right font-semibold">{report.score}</span>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* ── Recent Transactions Table ── */}
-          <div className="apple-glass p-6 sm:p-8 rounded-3xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <h3 className="headline text-[var(--text-primary)]">Recent On-Chain Transactions (Last 10)</h3>
-              <span className="text-xs text-[var(--text-muted)] font-medium">{report.transactions.length} Transactions</span>
-            </div>
-
-            {report.transactions.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] text-center py-6 font-normal">No recent transactions found for this wallet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+          <section className="flex flex-col gap-3.5">
+            <h2 className="h3">Last {Math.min(10, report.transactions.length) || 10} transactions</h2>
+            <div className="card overflow-x-auto">
+              {report.transactions.length === 0 ? (
+                <p className="m-0 p-8 text-center text-sm text-[var(--ink-3)]">No transactions found for this wallet.</p>
+              ) : (
+                <table className="ledger min-w-[620px]">
                   <thead>
-                    <tr className="border-b border-[var(--border-color)] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-3">Tx Hash</th>
-                      <th className="py-3 px-3">From</th>
-                      <th className="py-3 px-3">To</th>
-                      <th className="py-3 px-3">Value (ETH)</th>
-                      <th className="py-3 px-3">Age</th>
+                    <tr>
+                      <th scope="col">Tx hash</th>
+                      <th scope="col">Direction</th>
+                      <th scope="col">Counterparty</th>
+                      <th scope="col" className="num">Value</th>
+                      <th scope="col" className="num">Age</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-subtle)]">
-                    {report.transactions.map((tx, i) => {
-                      const valueEth = (() => {
-                        try {
-                          return formatEther(BigInt(tx.value || '0'));
-                        } catch {
-                          return (Number(tx.value || 0) / 1e18).toFixed(4);
-                        }
-                      })();
-
-                      const ageDays = Math.floor(
-                        (Date.now() / 1000 - Number(tx.timeStamp || Date.now() / 1000)) / 86400
-                      );
-
+                  <tbody>
+                    {report.transactions.map((tx) => {
+                      let valueEth;
+                      try {
+                        valueEth = Number(formatEther(BigInt(tx.value || '0')));
+                      } catch {
+                        valueEth = Number(tx.value || 0) / 1e18;
+                      }
+                      const outgoing = tx.from?.toLowerCase() === checkedAddress.toLowerCase();
+                      const counterparty = outgoing ? tx.to : tx.from;
+                      const ageDays = Math.floor((Date.now() / 1000 - Number(tx.timeStamp || Date.now() / 1000)) / 86400);
                       return (
-                        <tr key={i} className="hover:bg-[var(--bg-inset)] font-mono transition-colors">
-                          <td className="py-3.5 px-3 text-[var(--apple-blue)] font-medium hover:underline">
-                            <a
-                              href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {tx.hash.slice(0, 8)}...{tx.hash.slice(-6)}
+                        <tr key={tx.hash}>
+                          <td>
+                            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="link mono text-[13px] font-normal">
+                              {shortAddr(tx.hash, 6, 4)} ↗
                             </a>
                           </td>
-                          <td className="py-3.5 px-3 text-[var(--text-secondary)]">
-                            {tx.from.slice(0, 6)}...{tx.from.slice(-4)}
-                          </td>
-                          <td className="py-3.5 px-3 text-[var(--text-secondary)]">
-                            {tx.to ? `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}` : 'Contract Creation'}
-                          </td>
-                          <td className="py-3.5 px-3 font-bold text-[var(--text-primary)]">{parseFloat(valueEth).toFixed(4)} ETH</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] font-sans font-normal">{ageDays > 0 ? `${ageDays}d ago` : 'Today'}</td>
+                          <td className="text-[var(--ink-2)]">{outgoing ? 'Out' : 'In'}</td>
+                          <td className="mono text-[13px] text-[var(--ink-2)] whitespace-nowrap">{counterparty ? shortAddr(counterparty) : 'Contract creation'}</td>
+                          <td className="num font-semibold">{valueEth.toFixed(4)} ETH</td>
+                          <td className="num text-[var(--ink-3)]">{ageDays > 0 ? `${ageDays} d` : 'Today'}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </section>
 
-          {/* Conditional Action Button */}
-          {report.score < 50 && (
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={() => navigate('/campaigns')}
-                className="px-8 py-3.5 rounded-full bg-[var(--apple-green)] hover:bg-[var(--apple-green-hover)] text-white font-semibold text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer apple-press"
-              >
-                <span>Proceed to Verified Campaigns</span>
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14m-7-7 7 7-7 7" />
-                </svg>
-              </button>
+          {effectiveBand !== 'FLAGGED' && report.score < 51 && (
+            <div className="flex justify-center pt-2">
+              <Link to="/campaigns?filter=VERIFIED" className="btn btn-secondary btn-lg">Browse verified campaigns →</Link>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-function SignalCard({ icon, label, value, subtext, isWarning }) {
+function Fact({ k, v }) {
   return (
-    <div
-      className={`p-4 rounded-2xl border flex flex-col justify-between space-y-2 ${
-        isWarning
-          ? 'bg-[var(--apple-red-tint)] border-[var(--apple-red-border)]'
-          : 'apple-inset'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xl">{icon}</span>
-        {isWarning && <span className="w-2 h-2 rounded-full bg-[var(--apple-red)]"></span>}
-      </div>
-      <div>
-        <span className="caption-label text-[var(--text-muted)]">{label}</span>
-        <p className={`text-base font-bold mt-0.5 ${isWarning ? 'text-[var(--apple-red)]' : 'text-[var(--text-primary)]'}`}>
-          {value}
-        </p>
-        <p className="text-[11px] text-[var(--text-muted)] mt-0.5 line-clamp-1 font-normal">{subtext}</p>
-      </div>
+    <div className="well px-3.5 py-3 flex flex-col gap-0.5">
+      <span className="text-xs text-[var(--ink-3)]">{k}</span>
+      <span className="text-[17px] font-semibold">{v}</span>
     </div>
   );
 }

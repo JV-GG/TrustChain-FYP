@@ -86,6 +86,9 @@ export async function verifyCampaign(ownerAddress, etherscanApiKey) {
       };
     }
 
+    // Keep the full engine report so pages can show the per-signal breakdown without a second fetch
+    result.report = riskReport;
+
     verificationCache.set(cacheKey, result);
     return result;
   } catch (error) {
