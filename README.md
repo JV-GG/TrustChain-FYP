@@ -21,7 +21,7 @@ Donations are held in a secure, non-reentrant smart contract vault rather than t
 
 - 🛡️ **Automated Wallet Risk Engine**:
   - Analyzes campaign owner wallet age, transaction frequency, fund drain ratios (>90% outflow detection), and balances.
-  - Cross-references wallet addresses against **CryptoScamDB** blacklists.
+  - Cross-references wallet addresses against the **MyEtherWallet darklist** (bundled locally).
   - Generates a 0–100 Risk Score with color-coded safety badges (`VERIFIED`, `CAUTION`, `FLAGGED`).
 
 - 💳 **Non-Reentrant Smart Contract Escrow**:
@@ -50,7 +50,7 @@ Donations are held in a secure, non-reentrant smart contract vault rather than t
 graph TD
     A[React 18 / Vite Frontend] -->|Wagmi / Viem| B[TrustChain Smart Contract]
     A -->|Axios REST| C[Etherscan Sepolia V2 API]
-    A -->|Risk Engine API| D[CryptoScamDB Blacklist API]
+    A -->|Risk Engine| D[MyEtherWallet Darklist JSON]
     B -->|Donation Escrow| E[Sepolia Blockchain Vault]
     B -->|Milestone Claim| F[Campaign Owner Wallet]
 ```

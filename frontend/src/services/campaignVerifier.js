@@ -1,5 +1,4 @@
 import { analyseWallet } from './riskEngine';
-import { checkBlacklist } from './blacklistChecker';
 
 // Fast in-memory cache to prevent duplicate Etherscan API calls and make page loads instant (0ms cache hit)
 const verificationCache = new Map();
@@ -36,13 +35,10 @@ export async function verifyCampaign(ownerAddress, etherscanApiKey) {
   try {
     const apiKey = etherscanApiKey || import.meta.env.VITE_ETHERSCAN_API_KEY;
     
-    // Run risk engine analysis and blacklist check concurrently
-    const [riskReport, blacklistReport] = await Promise.all([
-      analyseWallet(ownerAddress, apiKey),
-      checkBlacklist(ownerAddress),
-    ]);
+    // The risk engine already runs the blacklist check; reuse its result
+    const riskReport = await analyseWallet(ownerAddress, apiKey);
 
-    const isBlacklisted = blacklistReport?.isBlacklisted || false;
+    const isBlacklisted = riskReport?.isBlacklisted || false;
     const score = riskReport?.score ?? 0;
     const riskLevel = riskReport?.riskLevel || 'LOW';
 
@@ -56,7 +52,7 @@ export async function verifyCampaign(ownerAddress, etherscanApiKey) {
         score,
         riskLevel: 'CRITICAL',
         reason: isBlacklisted
-          ? `Campaign owner wallet is blacklisted on CryptoScamDB (${blacklistReport.category || 'Malicious'})`
+          ? `Campaign owner wallet is on the MyEtherWallet darklist (${riskReport.blacklistDetails?.category || 'Malicious'})`
           : 'Campaign owner wallet is flagged as high risk by automated risk engine',
       };
     } else if (score >= 51) {

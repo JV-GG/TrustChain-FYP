@@ -12,7 +12,7 @@ import { isGoalReached, shortAddr } from '../lib/format';
 const STEPS = [
   {
     title: "The creator's wallet is scored",
-    body: 'Wallet age, transaction count, outflow ratio, recipient spread and a CryptoScamDB lookup add up to a score from 0 to 100.',
+    body: 'Wallet age, transaction count, outflow ratio, recipient spread and a MyEtherWallet darklist lookup add up to a score from 0 to 100.',
     code: 'analyseWallet(owner)',
   },
   {
@@ -202,7 +202,7 @@ function HeroReport({ campaign, verification, loading }) {
       <article aria-label="What the risk report checks" className="card-raised w-full max-w-[680px] justify-self-end p-7 flex flex-col gap-5">
         <span className="mono text-xs text-[var(--ink-3)]">RISK REPORT · FIVE SIGNALS</span>
         <ul className="m-0 p-0 list-none flex flex-col border-t border-[var(--rule-soft)]">
-          {['Wallet age', 'Transaction history', 'Outflow ratio', 'Recipient spread', 'CryptoScamDB'].map((name) => (
+          {['Wallet age', 'Transaction history', 'Outflow ratio', 'Recipient spread', 'MEW darklist'].map((name) => (
             <li key={name} className="flex items-center gap-2.5 py-3 border-b border-[var(--rule-soft)] text-sm">
               <CheckIcon className="text-[var(--accent)]" />
               {name}

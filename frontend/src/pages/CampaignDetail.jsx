@@ -512,7 +512,7 @@ export default function CampaignDetail() {
               <BlockedIcon size={20} className="shrink-0 mt-0.5" />
               <div className="text-sm leading-relaxed">
                 <p className="m-0 font-semibold">Donations blocked</p>
-                <p className="m-0 mt-1 text-[var(--ink-body)]">The creator's wallet failed the risk check or is on CryptoScamDB.</p>
+                <p className="m-0 mt-1 text-[var(--ink-body)]">The creator's wallet failed the risk check or is on the MyEtherWallet darklist.</p>
               </div>
             </div>
           ) : (

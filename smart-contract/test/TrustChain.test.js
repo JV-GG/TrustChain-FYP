@@ -94,4 +94,72 @@ describe("TrustChain", function () {
       ).to.be.revertedWith("Only campaign owner can disburse funds");
     });
   });
+  describe("Validation & Lifecycle", function () {
+    const goal = ethers.parseEther("10");
+    const create = () => trustChain.connect(campaignOwner).createCampaign("Fund", "Desc", "QmHash", goal);
+
+    it("Should revert when creating a campaign with goal 0", async function () {
+      await expect(
+        trustChain.connect(campaignOwner).createCampaign("Fund", "Desc", "QmHash", 0)
+      ).to.be.revertedWith("Goal amount must be greater than zero");
+    });
+
+    it("Should revert when donating 0 ETH", async function () {
+      await create();
+      await expect(
+        trustChain.connect(donor).donate(1, { value: 0 })
+      ).to.be.revertedWith("Donation amount must be greater than zero");
+    });
+
+    it("Should revert when donating to an invalid campaign ID", async function () {
+      await create();
+      for (const id of [0, 2]) {
+        await expect(
+          trustChain.connect(donor).donate(id, { value: ethers.parseEther("1") })
+        ).to.be.revertedWith("Invalid campaign ID");
+      }
+    });
+
+    it("Should let the campaign owner deactivate and emit CampaignDeactivated", async function () {
+      await create();
+      await expect(trustChain.connect(campaignOwner).deactivateCampaign(1))
+        .to.emit(trustChain, "CampaignDeactivated")
+        .withArgs(1, campaignOwner.address);
+      expect((await trustChain.getCampaign(1)).isActive).to.be.false;
+    });
+
+    it("Should prevent a non-owner from deactivating", async function () {
+      await create();
+      await expect(
+        trustChain.connect(nonOwner).deactivateCampaign(1)
+      ).to.be.revertedWith("Only campaign owner can deactivate");
+      expect((await trustChain.getCampaign(1)).isActive).to.be.true;
+    });
+
+    it("Should revert when deactivating twice", async function () {
+      await create();
+      await trustChain.connect(campaignOwner).deactivateCampaign(1);
+      await expect(
+        trustChain.connect(campaignOwner).deactivateCampaign(1)
+      ).to.be.revertedWith("Campaign is already inactive");
+    });
+
+    it("Should revert when donating to a deactivated campaign", async function () {
+      await create();
+      await trustChain.connect(campaignOwner).deactivateCampaign(1);
+      await expect(
+        trustChain.connect(donor).donate(1, { value: ethers.parseEther("1") })
+      ).to.be.revertedWith("Campaign is not active");
+    });
+
+    it("Should revert when disbursing more than the available balance", async function () {
+      await create();
+      await trustChain.connect(donor).donate(1, { value: ethers.parseEther("3") });
+      await trustChain.connect(campaignOwner).disburseFunds(1, ethers.parseEther("2"));
+      // 1 ETH left: asking for 1 wei more must fail
+      await expect(
+        trustChain.connect(campaignOwner).disburseFunds(1, ethers.parseEther("1") + 1n)
+      ).to.be.revertedWith("Insufficient campaign balance");
+    });
+  });
 });

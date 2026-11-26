@@ -31,6 +31,8 @@ const ADVICE = {
   },
 };
 
+const EXPLORER = { sepolia: 'https://sepolia.etherscan.io', mainnet: 'https://etherscan.io' };
+
 const isAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 
 export default function CheckWallet() {
@@ -42,6 +44,7 @@ export default function CheckWallet() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
+  const [network, setNetwork] = useState('sepolia');
 
   const runCheck = useCallback(async (raw) => {
     setErrorMsg('');
@@ -59,7 +62,7 @@ export default function CheckWallet() {
     setLoading(true);
     setReport(null);
     try {
-      const res = await analyseWallet(target, import.meta.env.VITE_ETHERSCAN_API_KEY);
+      const res = await analyseWallet(target, import.meta.env.VITE_ETHERSCAN_API_KEY, network);
       setReport(res);
       setCheckedAddress(target);
     } catch (err) {
@@ -68,7 +71,7 @@ export default function CheckWallet() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [network]);
 
   // Deep links like /check?address=0x… run straight away
   const paramAddress = searchParams.get('address');
@@ -107,11 +110,21 @@ export default function CheckWallet() {
       <div className="flex flex-col gap-2.5 max-w-[46rem]">
         <h1 className="h1">Check any wallet</h1>
         <p className="lead">
-          Paste a Sepolia address. We read its history from Etherscan, look it up on CryptoScamDB, and score it the same way we score every campaign creator.
+          Paste a Sepolia or mainnet address. We read its history from Etherscan, look it up on the MyEtherWallet darklist, and score it the same way we score every campaign creator.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div role="group" aria-label="Network" className="seg self-start">
+          {[
+            ['sepolia', 'Sepolia'],
+            ['mainnet', 'Mainnet'],
+          ].map(([id, label]) => (
+            <button key={id} type="button" aria-pressed={network === id} onClick={() => setNetwork(id)} className="seg-item">
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2.5">
           <label className="field-group flex-[1_1_420px] min-h-14">
             <span className="sr-only">Wallet address</span>
@@ -165,7 +178,7 @@ export default function CheckWallet() {
               <div className="flex justify-between items-center gap-3 flex-wrap">
                 <span className="text-sm font-semibold text-[var(--ink-2)]">Risk score</span>
                 <div className="flex gap-2 flex-wrap">
-                  {report.isBlacklisted && <span className="badge tone-flagged text-[13px] px-3 py-[5px]">On CryptoScamDB</span>}
+                  {report.isBlacklisted && <span className="badge tone-flagged text-[13px] px-3 py-[5px]">On MEW darklist</span>}
                   <VerificationBadge badge={effectiveBand} size="lg" />
                 </div>
               </div>
@@ -250,7 +263,7 @@ export default function CheckWallet() {
                       return (
                         <tr key={tx.hash}>
                           <td>
-                            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="link mono text-[13px] font-normal">
+                            <a href={`${EXPLORER[report.network]}/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="link mono text-[13px] font-normal">
                               {shortAddr(tx.hash, 6, 4)} ↗
                             </a>
                           </td>
